@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1077325853840",
+    "project_id": "phygen1",
+    "storage_bucket": "phygen1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1077325853840:android:1abbccf7781c10184c1415",
+        "android_client_info": {
+          "package_name": "com.example.phygen_mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1077325853840-h2sl816cl6ctkt8g3e42ggnfvq6ecsuo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4AVzfXKQwarOEHkIVfwL-TTWtwu7xjWg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1077325853840-h2sl816cl6ctkt8g3e42ggnfvq6ecsuo.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

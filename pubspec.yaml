@@ -1,0 +1,62 @@
+name: ezexam
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # ✅ Gọi API HTTP
+  http: ^0.13.6
+
+  # ✅ Firebase và Google Sign-In
+  firebase_core: ^3.2.0
+  firebase_auth: ^5.3.0
+  google_sign_in: ^6.2.1
+
+  # ✅ State management
+  provider: ^6.1.2
+
+  # ✅ Hiển thị thông báo ngắn
+  fluttertoast: ^8.2.12
+
+  # ✅ Lưu token local
+  shared_preferences: ^2.2.2
+
+  # ✅ Đa ngôn ngữ
+  flutter_localizations:
+    sdk: flutter
+  intl: 0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+  build_runner: ^2.4.9
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/logo.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icons/logo.png
+    - assets/icons/blend-icon.png
+    - assets/icons/landmark-icon.png
+    - assets/icons/scan-text.png
+    - assets/icons/phygen-icon.png
+    - assets/icons/google-icon.png
+
+  # ✅ Cấu hình generate localization từ ARB
+  generate: true
+  # Đây là cần thiết từ Flutter 3.10 trở lên
+  # Bạn không cần phải cài `flutter_gen` thủ công vì Flutter sẽ generate file từ l10n.yaml
