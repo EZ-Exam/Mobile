@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import 'config/api_config.dart';
 
 class MyExam extends StatelessWidget {
   MyExam({super.key});
 
   final List<String> samplePreviews = [
-    "https://i.imgur.com/0y8Ftya.png",
-    "https://i.imgur.com/0y8Ftya.png",
-    "https://i.imgur.com/0y8Ftya.png",
-    "https://i.imgur.com/0y8Ftya.png",
-    "https://i.imgur.com/0y8Ftya.png",
-    "https://i.imgur.com/0y8Ftya.png",
+    ApiConfig.sampleImageUrl,
+    ApiConfig.sampleImageUrl,
+    ApiConfig.sampleImageUrl,
+    ApiConfig.sampleImageUrl,
+    ApiConfig.sampleImageUrl,
+    ApiConfig.sampleImageUrl,
   ];
 
   final List<String> sampleTitles = [

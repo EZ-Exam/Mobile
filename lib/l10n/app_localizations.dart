@@ -527,7 +527,7 @@ abstract class AppLocalizations {
   /// No description provided for @start_page_description.
   ///
   /// In en, this message translates to:
-  /// **'Choose which page to display when you open PhyGen.'**
+  /// **'Choose which page to display when you open EZEXAM.'**
   String get start_page_description;
 
   /// No description provided for @save_changes.
@@ -635,7 +635,7 @@ abstract class AppLocalizations {
   /// No description provided for @sign_in_to_your_phygen_account.
   ///
   /// In en, this message translates to:
-  /// **'Sign in to your PhyGen account.'**
+  /// **'Sign in to your EZEXAM account.'**
   String get sign_in_to_your_phygen_account;
 
   /// No description provided for @enter_your_email.
@@ -689,7 +689,7 @@ abstract class AppLocalizations {
   /// No description provided for @sign_up_subtitle.
   ///
   /// In en, this message translates to:
-  /// **'Join PhyGen and start managing your exams'**
+  /// **'Join EZEXAM and start managing your exams'**
   String get sign_up_subtitle;
 
   /// No description provided for @enter_your_full_name.

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'config/api_config.dart';
 
 class Recently extends StatelessWidget {
   Recently({super.key});
@@ -30,7 +31,7 @@ class Recently extends StatelessWidget {
     },
   ];
 
-  final String previewUrl = "https://i.imgur.com/0y8Ftya.png";
+  final String previewUrl = ApiConfig.sampleImageUrl;
 
   @override
   Widget build(BuildContext context) {

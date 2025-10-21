@@ -30,7 +30,7 @@ class HomeBox extends StatelessWidget {
             child: Column(
               children: const [
                 Text(
-                  'Welcome to PhyGen',
+                  'Welcome to EZEXAM',
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,

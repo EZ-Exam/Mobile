@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'services/api_service.dart';
 import 'pages/user_details_page.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -12,11 +11,13 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final ApiService _apiService = ApiService();
   bool _isLoading = true;
   bool _isEditing = false;
   Map<String, dynamic> _userProfile = {};
   Map<String, dynamic> _formData = {};
   Map<String, dynamic> _originalData = {};
+  String? _error;
 
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -28,38 +29,96 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadUserProfile();
   }
 
+  Future<void> _logout() async {
+    // Show confirmation dialog
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đăng xuất'),
+        content: const Text('Bạn có chắc chắn muốn đăng xuất?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Đăng xuất'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      try {
+        // Clear token from SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('token');
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đăng xuất thành công!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Navigate to login page
+        Navigator.pushReplacementNamed(context, '/signin');
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi đăng xuất: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _loadUserProfile() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 1));
+      // Check if user is authenticated first
+      final isAuth = await _apiService.isAuthenticated();
+      if (!isAuth) {
+        setState(() {
+          _error = 'Bạn cần đăng nhập để xem profile';
+        });
+        return;
+      }
+      
+      print('🔍 Loading user profile...');
+      final response = await _apiService.getUserProfile();
+      print('🔍 Profile Response: $response');
       
       setState(() {
-        _userProfile = {
-          'id': '1',
-          'fullName': 'Nguyễn Văn A',
-          'email': 'nguyenvana@example.com',
-          'phoneNumber': '0123456789',
-          'avatarUrl': '',
-          'createdAt': '2024-01-01T00:00:00Z',
-          'roleId': '1',
-          'balance': '1000000',
-          'subscriptionName': 'Premium',
-          'subscriptionCode': 'PREMIUM',
-          'subscriptionEndDate': '2024-12-31T23:59:59Z',
-          'subscriptionIsActive': 'true',
-        };
-        
+        _userProfile = response;
         _formData = Map.from(_userProfile);
         _originalData = Map.from(_userProfile);
         
-        _fullNameController.text = _formData['fullName'] ?? '';
+        _fullNameController.text = _formData['name'] ?? _formData['fullName'] ?? '';
         _emailController.text = _formData['email'] ?? '';
-        _phoneController.text = _formData['phoneNumber'] ?? '';
+        _phoneController.text = _formData['phoneNumber'] ?? _formData['phone'] ?? '';
       });
     } catch (e) {
-      print('Error loading user profile: $e');
+      print('❌ Error loading user profile: $e');
+      setState(() {
+        _error = e.toString();
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải hồ sơ: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -69,27 +128,45 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() => _isLoading = true);
     
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 1));
+      print('🔍 Saving profile...');
+      final profileData = {
+        'name': _fullNameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phoneNumber': _phoneController.text.trim(),
+      };
+      
+      print('🔍 Profile Data: $profileData');
+      final response = await _apiService.updateProfile(profileData);
+      print('🔍 Update Response: $response');
       
       setState(() {
-        _formData['fullName'] = _fullNameController.text;
-        _formData['email'] = _emailController.text;
-        _formData['phoneNumber'] = _phoneController.text;
+        _formData['name'] = _fullNameController.text.trim();
+        _formData['email'] = _emailController.text.trim();
+        _formData['phoneNumber'] = _phoneController.text.trim();
         
         _userProfile = Map.from(_formData);
         _originalData = Map.from(_formData);
         _isEditing = false;
       });
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cập nhật hồ sơ thành công!')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cập nhật hồ sơ thành công!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
-      print('Error saving profile: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cập nhật hồ sơ thất bại!')),
-      );
+      print('❌ Error saving profile: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cập nhật hồ sơ thất bại: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -98,9 +175,9 @@ class _ProfilePageState extends State<ProfilePage> {
   void _cancelEdit() {
     setState(() {
       _formData = Map.from(_originalData);
-      _fullNameController.text = _formData['fullName'] ?? '';
+      _fullNameController.text = _formData['name'] ?? _formData['fullName'] ?? '';
       _emailController.text = _formData['email'] ?? '';
-      _phoneController.text = _formData['phoneNumber'] ?? '';
+      _phoneController.text = _formData['phoneNumber'] ?? _formData['phone'] ?? '';
       _isEditing = false;
     });
   }
@@ -121,13 +198,75 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: _isLoading
+      appBar: AppBar(
+        title: const Text('Profile'),
+        backgroundColor: const Color(0xFF3B82F6),
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            onPressed: _logout,
+            icon: const Icon(Icons.logout),
+            tooltip: 'Đăng xuất',
+          ),
+        ],
+      ),
+      body: _isLoading && _userProfile.isEmpty
           ? const Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
               ),
             )
-          : SingleChildScrollView(
+          : _error != null && _userProfile.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: Colors.red,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Lỗi: $_error',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.red,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            onPressed: _loadUserProfile,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF3B82F6),
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Thử lại'),
+                          ),
+                          if (_error!.contains('đăng nhập'))
+                            ...[
+                              const SizedBox(width: 16),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pushReplacementNamed(context, '/signin');
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF10B981),
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text('Đăng nhập'),
+                              ),
+                            ],
+                        ],
+                      ),
+                    ],
+                  ),
+                )
+              : SingleChildScrollView(
               padding: EdgeInsets.all(isDesktop ? 24 : 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,6 +328,15 @@ class _ProfilePageState extends State<ProfilePage> {
                             if (!_isEditing)
                               Row(
                                 children: [
+                                  IconButton(
+                                    onPressed: _loadUserProfile,
+                                    icon: const Icon(Icons.refresh, color: Colors.white),
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: Colors.white.withOpacity(0.2),
+                                    ),
+                                    tooltip: 'Tải lại',
+                                  ),
+                                  SizedBox(width: isDesktop ? 8 : 4),
                                   IconButton(
                                     onPressed: () {
                                       Navigator.push(
@@ -267,8 +415,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 borderRadius: BorderRadius.circular(isDesktop ? 40 : 30),
                               ),
                               child: Center(
-                                child: Text(
-                                  (_formData['fullName'] ?? 'U').substring(0, 1).toUpperCase(),
+                              child: Text(
+                                (_formData['name'] ?? _formData['fullName'] ?? 'U').substring(0, 1).toUpperCase(),
                                   style: TextStyle(
                                     fontSize: isDesktop ? 32 : 24,
                                     fontWeight: FontWeight.bold,
@@ -283,7 +431,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    _formData['fullName'] ?? 'User',
+                                    _formData['name'] ?? _formData['fullName'] ?? 'User',
                                     style: TextStyle(
                                       fontSize: isDesktop ? 20 : 18,
                                       fontWeight: FontWeight.bold,

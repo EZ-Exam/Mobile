@@ -202,10 +202,10 @@ class _LessonDetailsPageState extends State<LessonDetailsPage> {
 
   Widget _buildTitleAndMeta() {
     final lesson = _lessonDetails!;
-    final title = lesson['title'] ?? 'N/A';
-    final subject = lesson['subject'] ?? lesson['subjectName'] ?? 'N/A';
-    final duration = lesson['duration'] ?? lesson['estimatedTime'] ?? 'N/A';
-    final difficulty = lesson['difficulty'] ?? 'N/A';
+    final title = lesson['name'] ?? lesson['title'] ?? 'N/A';
+    final chapterId = lesson['chapterId']?.toString() ?? 'N/A';
+    final gradeId = lesson['gradeId']?.toString() ?? 'N/A';
+    final createdAt = lesson['createdAt'] ?? 'N/A';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -221,17 +221,27 @@ class _LessonDetailsPageState extends State<LessonDetailsPage> {
         
         const SizedBox(height: 12),
         
-        Row(
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: [
-            _buildMetaChip(Icons.subject, subject, Colors.blue),
-            const SizedBox(width: 8),
-            _buildMetaChip(Icons.timer, duration, Colors.orange),
-            const SizedBox(width: 8),
-            _buildMetaChip(Icons.trending_up, difficulty, Colors.green),
+            _buildMetaChip(Icons.book, 'Chương $chapterId', Colors.blue),
+            if (gradeId != 'N/A') _buildMetaChip(Icons.grade, 'Lớp $gradeId', Colors.orange),
+            _buildMetaChip(Icons.calendar_today, _formatDate(createdAt), Colors.green),
           ],
         ),
       ],
     );
+  }
+
+  String _formatDate(String? dateString) {
+    if (dateString == null || dateString == 'N/A') return 'N/A';
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return 'N/A';
+    }
   }
 
   Widget _buildMetaChip(IconData icon, String text, Color color) {
@@ -262,7 +272,7 @@ class _LessonDetailsPageState extends State<LessonDetailsPage> {
 
   Widget _buildDescription() {
     final lesson = _lessonDetails!;
-    final description = lesson['description'] ?? lesson['summary'] ?? 'Không có mô tả';
+    final description = lesson['description'] ?? 'Không có mô tả chi tiết';
 
     return Card(
       elevation: 2,
@@ -275,7 +285,7 @@ class _LessonDetailsPageState extends State<LessonDetailsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Mô tả',
+              'Mô tả bài học',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -299,7 +309,8 @@ class _LessonDetailsPageState extends State<LessonDetailsPage> {
 
   Widget _buildContent() {
     final lesson = _lessonDetails!;
-    final content = lesson['content'] ?? lesson['lessonContent'] ?? 'N/A';
+    final document = lesson['document'];
+    final documentType = lesson['documentType'];
 
     return Card(
       elevation: 2,
@@ -312,7 +323,7 @@ class _LessonDetailsPageState extends State<LessonDetailsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Nội dung bài học',
+              'Tài liệu bài học',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -320,26 +331,136 @@ class _LessonDetailsPageState extends State<LessonDetailsPage> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              content,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF4A5568),
-                height: 1.5,
+            if (document != null && documentType != null)
+              _buildDocumentInfo(document, documentType)
+            else
+              const Text(
+                'Chưa có tài liệu',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF4A5568),
+                  fontStyle: FontStyle.italic,
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActionButtons() {
-    return Row(
+  Widget _buildDocumentInfo(String document, String documentType) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
+        Row(
+          children: [
+            Icon(
+              _getDocumentIcon(documentType),
+              color: const Color(0xFF667eea),
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Loại tài liệu: $documentType',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF4A5568),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Tài liệu: $document',
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF4A5568),
+            height: 1.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  IconData _getDocumentIcon(String documentType) {
+    switch (documentType.toLowerCase()) {
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'video':
+        return Icons.video_library;
+      case 'image':
+        return Icons.image;
+      case 'text':
+        return Icons.text_snippet;
+      default:
+        return Icons.description;
+    }
+  }
+
+  Widget _buildActionButtons() {
+    final lesson = _lessonDetails!;
+    final lessonId = lesson['id']?.toString() ?? widget.lessonId;
+    
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // Navigate to questions
+                  Navigator.pushNamed(
+                    context,
+                    '/questions',
+                    arguments: {
+                      'lessonId': lessonId,
+                      'lessonName': lesson['name'] ?? lesson['title'] ?? 'Bài học',
+                    },
+                  );
+                },
+                icon: const Icon(Icons.quiz),
+                label: const Text('Làm bài tập'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF667eea),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Đã lưu bài học')),
+                  );
+                },
+                icon: const Icon(Icons.bookmark),
+                label: const Text('Lưu bài'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF667eea),
+                  side: const BorderSide(color: Color(0xFF667eea)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: () {
+              // Start learning
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Bắt đầu học bài')),
               );
@@ -347,28 +468,8 @@ class _LessonDetailsPageState extends State<LessonDetailsPage> {
             icon: const Icon(Icons.play_arrow),
             label: const Text('Bắt đầu học'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF667eea),
+              backgroundColor: const Color(0xFF10B981),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã lưu bài học')),
-              );
-            },
-            icon: const Icon(Icons.bookmark),
-            label: const Text('Lưu bài'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF667eea),
-              side: const BorderSide(color: Color(0xFF667eea)),
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),

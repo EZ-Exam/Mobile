@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'config/api_config.dart';
+import 'widgets/google_sign_in_button.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -23,7 +24,7 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _isLoading = false;
   String? _error;
 
-  final String apiUrl = "http://192.168.1.6:5000/signup";
+  String get apiUrl => ApiConfig.legacySignupUrl;
 
   Future<void> _handleSignup() async {
     setState(() {
@@ -81,18 +82,6 @@ class _SignUpPageState extends State<SignUpPage> {
     }
   }
 
-  Future<void> _signUpWithGoogle() async {
-    try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser != null) {
-        _showToast("Đăng ký bằng Google thành công: ${googleUser.email}");
-        Navigator.pushReplacementNamed(context, '/');
-      }
-    } catch (e) {
-      _showToast("Lỗi Google Sign-Up: $e");
-    }
-  }
-
   void _showToast(String message) {
     Fluttertoast.showToast(
       msg: message,
@@ -111,7 +100,7 @@ class _SignUpPageState extends State<SignUpPage> {
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                Image.asset('assets/icons/phygen-icon.png', width: 100),
+                Image.asset('assets/icons/logo.png', width: 100),
                 const SizedBox(height: 16),
                 const Text('Sign up',
                     style: TextStyle(
@@ -191,16 +180,13 @@ class _SignUpPageState extends State<SignUpPage> {
                   child: Text(_isLoading ? 'Signing up...' : 'Sign up'),
                 ),
                 const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  onPressed: _signUpWithGoogle,
-                  icon: Image.asset('assets/icons/google-icon.png', width: 20),
-                  label: const Text('Continue with Google'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    side: const BorderSide(color: Colors.grey),
-                  ),
+                GoogleSignInButton(
+                  onSuccess: () {
+                    Navigator.pushReplacementNamed(context, "/home");
+                  },
+                  onError: () {
+                    // Handle error if needed
+                  },
                 ),
                 const SizedBox(height: 16),
                 Row(

@@ -229,7 +229,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get start_page_description =>
-      'Choose which page to display when you open PhyGen.';
+      'Choose which page to display when you open EZEXAM.';
 
   @override
   String get save_changes => 'Save Changes';
@@ -286,7 +286,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sign_in_to_your_phygen_account =>
-      'Sign in to your PhyGen account.';
+      'Sign in to your EZEXAM account.';
 
   @override
   String get enter_your_email => 'Enter your email';
@@ -313,7 +313,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get data_deletion => 'Data Deletion Policy';
 
   @override
-  String get sign_up_subtitle => 'Join PhyGen and start managing your exams';
+  String get sign_up_subtitle => 'Join EZEXAM and start managing your exams';
 
   @override
   String get enter_your_full_name => 'Enter your full name';

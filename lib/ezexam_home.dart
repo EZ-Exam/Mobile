@@ -174,7 +174,7 @@ class _EZEXAMHomePageState extends State<EZEXAMHomePage> {
                             SizedBox(width: isDesktop ? 16 : 12),
                             Expanded(
                               child: OutlinedButton(
-                                onPressed: () => _showRegisterDialog(),
+                                onPressed: () => Navigator.pushNamed(context, '/signup'),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: Colors.white,
                                   side: const BorderSide(color: Colors.white, width: 2),
@@ -414,28 +414,5 @@ class _EZEXAMHomePageState extends State<EZEXAMHomePage> {
 
   void _showLoginDialog() {
     Navigator.pushNamed(context, '/login');
-  }
-
-  void _showRegisterDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => RegisterDialog(),
-    );
-  }
-}
-
-class RegisterDialog extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Đăng ký'),
-      content: const Text('Tính năng đăng ký sẽ có sớm!'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Đóng'),
-        ),
-      ],
-    );
   }
 }

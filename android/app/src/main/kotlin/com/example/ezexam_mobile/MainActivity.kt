@@ -1,4 +1,4 @@
-package com.example.phygen_mobile
+package com.example.ezexam_mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

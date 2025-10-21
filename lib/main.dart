@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'l10n/app_localizations.dart';
 import 'routes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Load environment variables
+  await dotenv.load(fileName: "assets/config.env");
+  
   // Tạm thời comment Firebase để test
   // await Firebase.initializeApp(
   //   options: DefaultFirebaseOptions.currentPlatform,

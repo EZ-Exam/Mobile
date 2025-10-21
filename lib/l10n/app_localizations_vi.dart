@@ -145,7 +145,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get trash_can_description => 'Khôi phục hoặc xóa vĩnh viễn các mục';
 
   @override
-  String get search_placeholder => 'Tìm kiếm trong PhyGen...';
+  String get search_placeholder => 'Tìm kiếm trong EZEXAM...';
 
   @override
   String get notifications => 'Thông báo';
@@ -157,7 +157,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get sign_out => 'Đăng xuất';
 
   @override
-  String get landing_title => 'Chào mừng đến với PhyGen';
+  String get landing_title => 'Chào mừng đến với EZEXAM';
 
   @override
   String get landing_subtitle =>
@@ -227,7 +227,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get settings_title => 'Cài đặt';
 
   @override
-  String get start_page_description => 'Chọn trang hiển thị khi mở PhyGen.';
+  String get start_page_description => 'Chọn trang hiển thị khi mở EZEXAM.';
 
   @override
   String get save_changes => 'Lưu thay đổi';
@@ -284,7 +284,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get sign_in_to_your_phygen_account =>
-      'Đăng nhập vào tài khoản PhyGen.';
+      'Đăng nhập vào tài khoản EZEXAM.';
 
   @override
   String get enter_your_email => 'Nhập email của bạn';
@@ -311,7 +311,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get data_deletion => 'Chính sách xóa dữ liệu';
 
   @override
-  String get sign_up_subtitle => 'Tham gia PhyGen và bắt đầu quản lý đề thi';
+  String get sign_up_subtitle => 'Tham gia EZEXAM và bắt đầu quản lý đề thi';
 
   @override
   String get enter_your_full_name => 'Nhập họ tên của bạn';

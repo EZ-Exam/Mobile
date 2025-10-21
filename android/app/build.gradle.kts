@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.phygen_mobile"
+    namespace = "com.example.ezexam_mobile"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -21,7 +21,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.phygen_mobile"
+        applicationId = "com.example.ezexam_mobile"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

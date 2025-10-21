@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'config/api_config.dart';
+import 'services/api_service.dart';
 import 'pages/lesson_details_page.dart';
 
 class LessonsPage extends StatefulWidget {
@@ -17,6 +17,9 @@ class _LessonsPageState extends State<LessonsPage> {
   String _selectedSubject = 'all';
   String _sortBy = 'title';
   String _sortOrder = 'asc';
+  int _currentPage = 1;
+  bool _hasMoreData = true;
+  final ApiService _apiService = ApiService();
 
   final List<Map<String, String>> _subjects = [
     {'id': 'all', 'name': 'Tất cả'},
@@ -36,85 +39,75 @@ class _LessonsPageState extends State<LessonsPage> {
     _loadLessons();
   }
 
-  Future<void> _loadLessons() async {
+  Future<void> _loadLessons({bool isRefresh = false}) async {
+    if (isRefresh) {
+      setState(() {
+        _currentPage = 1;
+        _hasMoreData = true;
+        _lessons.clear();
+      });
+    }
+    
+    if (!_hasMoreData) return;
+    
     setState(() => _isLoading = true);
     
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 1));
+      print('🔍 Loading lessons - Page: $_currentPage, Subject: $_selectedSubject, Sort: $_sortBy:$_sortOrder');
       
-      setState(() {
-        _lessons = [
-          {
-            'id': '1',
-            'title': 'Đại số tuyến tính cơ bản',
-            'description': 'Học về ma trận, định thức và hệ phương trình tuyến tính',
-            'subjectId': '1',
-            'subjectName': 'Toán học',
-            'duration': '45 phút',
-            'difficulty': 'Medium',
-            'progress': 0.75,
-            'pdfUrl': 'https://example.com/lesson1.pdf',
-          },
-          {
-            'id': '2',
-            'title': 'Cơ học Newton',
-            'description': 'Các định luật Newton và ứng dụng trong thực tế',
-            'subjectId': '2',
-            'subjectName': 'Vật lý',
-            'duration': '30 phút',
-            'difficulty': 'Easy',
-            'progress': 0.60,
-            'pdfUrl': 'https://example.com/lesson2.pdf',
-          },
-          {
-            'id': '3',
-            'title': 'Hóa học hữu cơ',
-            'description': 'Các hợp chất hữu cơ cơ bản và phản ứng',
-            'subjectId': '3',
-            'subjectName': 'Hóa học',
-            'duration': '60 phút',
-            'difficulty': 'Hard',
-            'progress': 0.90,
-            'pdfUrl': 'https://example.com/lesson3.pdf',
-          },
-          {
-            'id': '4',
-            'title': 'Sinh học tế bào',
-            'description': 'Cấu trúc và chức năng của tế bào',
-            'subjectId': '4',
-            'subjectName': 'Sinh học',
-            'duration': '40 phút',
-            'difficulty': 'Medium',
-            'progress': 0.30,
-            'pdfUrl': 'https://example.com/lesson4.pdf',
-          },
-          {
-            'id': '5',
-            'title': 'Văn học hiện đại',
-            'description': 'Các tác phẩm văn học Việt Nam thế kỷ XX',
-            'subjectId': '5',
-            'subjectName': 'Ngữ văn',
-            'duration': '50 phút',
-            'difficulty': 'Medium',
-            'progress': 0.45,
-            'pdfUrl': 'https://example.com/lesson5.pdf',
-          },
-          {
-            'id': '6',
-            'title': 'Grammar Advanced',
-            'description': 'Advanced English grammar and usage',
-            'subjectId': '6',
-            'subjectName': 'Tiếng Anh',
-            'duration': '35 phút',
-            'difficulty': 'Hard',
-            'progress': 0.20,
-            'pdfUrl': 'https://example.com/lesson6.pdf',
-          },
-        ];
-      });
+      final response = await _apiService.getLessons(
+        pageNumber: _currentPage,
+        pageSize: 10,
+        subjectId: _selectedSubject == 'all' ? null : _selectedSubject,
+        sortBy: _sortBy,
+        sortOrder: _sortOrder,
+      );
+      
+      print('🔍 Lessons Response: $response');
+      
+      if (response['items'] != null && response['items'] is List) {
+        final List<dynamic> lessonsData = response['items'];
+        final List<Map<String, dynamic>> newLessons = lessonsData
+            .map((lesson) => Map<String, dynamic>.from(lesson))
+            .toList();
+        
+        setState(() {
+          if (isRefresh) {
+            _lessons = newLessons;
+          } else {
+            _lessons.addAll(newLessons);
+          }
+          
+          // Check if there's more data based on pagination
+          final totalPages = response['totalPages'] ?? 1;
+          final currentPage = response['pageNumber'] ?? 1;
+          _hasMoreData = currentPage < totalPages;
+          _currentPage++;
+        });
+        
+        print('🔍 Loaded ${newLessons.length} lessons. Total: ${_lessons.length}');
+        print('🔍 Pagination: Page ${response['pageNumber']} of ${response['totalPages']}');
+      } else {
+        print('❌ No lessons data in response');
+        setState(() {
+          _hasMoreData = false;
+        });
+      }
     } catch (e) {
-      print('Error loading lessons: $e');
+      print('❌ Error loading lessons: $e');
+      setState(() {
+        _hasMoreData = false;
+      });
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải bài học: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -122,15 +115,46 @@ class _LessonsPageState extends State<LessonsPage> {
 
   List<Map<String, dynamic>> get _filteredLessons {
     return _lessons.where((lesson) {
+      final title = lesson['title']?.toString() ?? '';
+      final description = lesson['description']?.toString() ?? '';
+      
       final matchesSearch = _searchQuery.isEmpty ||
-          lesson['title'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          lesson['description'].toLowerCase().contains(_searchQuery.toLowerCase());
+          title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          description.toLowerCase().contains(_searchQuery.toLowerCase());
       
       final matchesSubject = _selectedSubject == 'all' ||
-          lesson['subjectId'] == _selectedSubject;
+          lesson['subjectId']?.toString() == _selectedSubject;
       
       return matchesSearch && matchesSubject;
     }).toList();
+  }
+
+  void _onRefresh() {
+    _loadLessons(isRefresh: true);
+  }
+
+  void _loadMore() {
+    if (!_isLoading && _hasMoreData) {
+      _loadLessons();
+    }
+  }
+
+  void _onSubjectChanged(String? value) {
+    if (value != null) {
+      setState(() {
+        _selectedSubject = value;
+      });
+      _loadLessons(isRefresh: true);
+    }
+  }
+
+  void _onSortChanged(String? value) {
+    if (value != null) {
+      setState(() {
+        _sortBy = value;
+      });
+      _loadLessons(isRefresh: true);
+    }
   }
 
   Color _getSubjectColor(String subjectId) {
@@ -144,6 +168,20 @@ class _LessonsPageState extends State<LessonsPage> {
       case '7': return const Color(0xFFEF4444); // Lịch sử
       case '8': return const Color(0xFF14B8A6); // Địa lý
       default: return const Color(0xFF6B7280);
+    }
+  }
+
+  String _getSubjectName(String subjectId) {
+    switch (subjectId) {
+      case '1': return 'Toán học';
+      case '2': return 'Vật lý';
+      case '3': return 'Hóa học';
+      case '4': return 'Sinh học';
+      case '5': return 'Ngữ văn';
+      case '6': return 'Tiếng Anh';
+      case '7': return 'Lịch sử';
+      case '8': return 'Địa lý';
+      default: return 'Khác';
     }
   }
 
@@ -433,6 +471,47 @@ class _LessonsPageState extends State<LessonsPage> {
     );
   }
 
+  Widget _buildLoadMoreButton(bool isDesktop) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(isDesktop ? 12 : 10),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: InkWell(
+        onTap: _loadMore,
+        borderRadius: BorderRadius.circular(isDesktop ? 12 : 10),
+        child: Container(
+          padding: EdgeInsets.all(isDesktop ? 24 : 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_isLoading)
+                const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
+                )
+              else
+                Icon(
+                  Icons.add,
+                  size: isDesktop ? 32 : 24,
+                  color: Colors.grey[600],
+                ),
+              SizedBox(height: isDesktop ? 8 : 4),
+              Text(
+                _isLoading ? 'Đang tải...' : 'Tải thêm',
+                style: TextStyle(
+                  fontSize: isDesktop ? 14 : 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLessonCard(Map<String, dynamic> lesson, bool isDesktop) {
     return GestureDetector(
       onTap: () {
@@ -490,15 +569,15 @@ class _LessonsPageState extends State<LessonsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        lesson['subjectName'],
+                        _getSubjectName(lesson['subjectId']?.toString() ?? ''),
                         style: TextStyle(
                           fontSize: isDesktop ? 14 : 12,
                           fontWeight: FontWeight.bold,
-                          color: _getSubjectColor(lesson['subjectId']),
+                          color: _getSubjectColor(lesson['subjectId']?.toString() ?? ''),
                         ),
                       ),
                       Text(
-                        lesson['duration'],
+                        'Không có thời gian',
                         style: TextStyle(
                           fontSize: isDesktop ? 12 : 10,
                           color: Colors.grey[600],
@@ -513,15 +592,15 @@ class _LessonsPageState extends State<LessonsPage> {
                     vertical: isDesktop ? 4 : 2,
                   ),
                   decoration: BoxDecoration(
-                    color: _getDifficultyColor(lesson['difficulty']).withOpacity(0.1),
+                    color: _getDifficultyColor('Medium').withOpacity(0.1),
                     borderRadius: BorderRadius.circular(isDesktop ? 8 : 6),
                   ),
                   child: Text(
-                    lesson['difficulty'],
+                    'Medium',
                     style: TextStyle(
                       fontSize: isDesktop ? 10 : 8,
                       fontWeight: FontWeight.bold,
-                      color: _getDifficultyColor(lesson['difficulty']),
+                      color: _getDifficultyColor('Medium'),
                     ),
                   ),
                 ),
@@ -537,7 +616,7 @@ class _LessonsPageState extends State<LessonsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    lesson['title'],
+                    lesson['title']?.toString() ?? 'Không có tiêu đề',
                     style: TextStyle(
                       fontSize: isDesktop ? 16 : 14,
                       fontWeight: FontWeight.bold,
@@ -548,7 +627,7 @@ class _LessonsPageState extends State<LessonsPage> {
                   ),
                   SizedBox(height: isDesktop ? 8 : 6),
                   Text(
-                    lesson['description'],
+                    lesson['description']?.toString() ?? 'Không có mô tả',
                     style: TextStyle(
                       fontSize: isDesktop ? 12 : 10,
                       color: Colors.grey[600],
@@ -573,7 +652,7 @@ class _LessonsPageState extends State<LessonsPage> {
                             ),
                           ),
                           Text(
-                            '${(lesson['progress'] * 100).toInt()}%',
+                            '${((lesson['progress'] ?? 0.0) * 100).toInt()}%',
                             style: TextStyle(
                               fontSize: isDesktop ? 12 : 10,
                               fontWeight: FontWeight.bold,
@@ -584,7 +663,7 @@ class _LessonsPageState extends State<LessonsPage> {
                       ),
                       SizedBox(height: isDesktop ? 8 : 6),
                       LinearProgressIndicator(
-                        value: lesson['progress'],
+                        value: lesson['progress'] ?? 0.0,
                         backgroundColor: Colors.grey[200],
                         valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
                       ),
@@ -603,7 +682,7 @@ class _LessonsPageState extends State<LessonsPage> {
               onPressed: () {
                 // Navigate to lesson detail
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Mở bài học: ${lesson['title']}')),
+                  SnackBar(content: Text('Mở bài học: ${lesson['title']?.toString() ?? 'Không có tiêu đề'}')),
                 );
               },
               style: ElevatedButton.styleFrom(

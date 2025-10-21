@@ -86,7 +86,26 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         }
       }
     } catch (e) {
-      _showSnackBar('Đăng nhập thất bại: ${e.toString()}', isError: true);
+      String errorMessage = 'Đăng nhập thất bại';
+      
+      // Handle specific error cases
+      if (e.toString().contains('401')) {
+        errorMessage = 'Email hoặc mật khẩu không đúng';
+      } else if (e.toString().contains('403')) {
+        errorMessage = 'Tài khoản bị khóa';
+      } else if (e.toString().contains('404')) {
+        errorMessage = 'Tài khoản không tồn tại';
+      } else if (e.toString().contains('500')) {
+        errorMessage = 'Lỗi máy chủ, vui lòng thử lại sau';
+      } else if (e.toString().contains('timeout')) {
+        errorMessage = 'Kết nối quá chậm, vui lòng thử lại';
+      } else if (e.toString().contains('SocketException')) {
+        errorMessage = 'Không có kết nối internet';
+      } else {
+        errorMessage = 'Đăng nhập thất bại: ${e.toString()}';
+      }
+      
+      _showSnackBar(errorMessage, isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -176,11 +195,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                     
                     // Google Sign In
                     _buildGoogleSignIn(isDesktop),
-                    
-                    SizedBox(height: isDesktop ? 30 : 20),
-                    
-                    // Demo Credentials
-                    _buildDemoCredentials(isDesktop),
                     
                     SizedBox(height: isDesktop ? 30 : 20),
                     
@@ -522,44 +536,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             color: Colors.white,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildDemoCredentials(bool isDesktop) {
-    return Container(
-      padding: EdgeInsets.all(isDesktop ? 20 : 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(isDesktop ? 16 : 12),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            'Demo Credentials',
-            style: TextStyle(
-              fontSize: isDesktop ? 16 : 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          SizedBox(height: isDesktop ? 12 : 8),
-          Text(
-            'Email: demo@ezexam.com',
-            style: TextStyle(
-              fontSize: isDesktop ? 14 : 12,
-              color: Colors.white.withOpacity(0.9),
-            ),
-          ),
-          Text(
-            'Password: 123456',
-            style: TextStyle(
-              fontSize: isDesktop ? 14 : 12,
-              color: Colors.white.withOpacity(0.9),
-            ),
-          ),
-        ],
       ),
     );
   }

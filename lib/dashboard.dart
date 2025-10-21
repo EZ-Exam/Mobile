@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'services/api_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -11,14 +11,29 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   bool _isLoading = true;
+  bool _isAuthenticated = false;
   Map<String, dynamic> _stats = {};
   List<Map<String, dynamic>> _recentLessons = [];
   List<Map<String, dynamic>> _recentTests = [];
+  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
     super.initState();
-    _loadDashboardData();
+    _checkAuthentication();
+  }
+
+  Future<void> _checkAuthentication() async {
+    final isAuth = await _apiService.isAuthenticated();
+    setState(() {
+      _isAuthenticated = isAuth;
+    });
+
+    if (isAuth) {
+      _loadDashboardData();
+    } else {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _loadDashboardData() async {
@@ -101,189 +116,295 @@ class _DashboardPageState extends State<DashboardPage> {
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
               ),
             )
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(isDesktop ? 24 : 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(isDesktop ? 32 : 24),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF3B82F6),
-                          Color(0xFF8B5CF6),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(isDesktop ? 20 : 16),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Chào mừng trở lại!',
-                          style: TextStyle(
-                            fontSize: isDesktop ? 28 : 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+          : !_isAuthenticated
+              ? _buildLoginPrompt(isDesktop)
+              : SingleChildScrollView(
+                  padding: EdgeInsets.all(isDesktop ? 24 : 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(isDesktop ? 32 : 24),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF3B82F6),
+                              Color(0xFF8B5CF6),
+                            ],
                           ),
+                          borderRadius: BorderRadius.circular(isDesktop ? 20 : 16),
                         ),
-                        SizedBox(height: isDesktop ? 8 : 4),
-                        Text(
-                          'Tiếp tục hành trình học tập của bạn',
-                          style: TextStyle(
-                            fontSize: isDesktop ? 16 : 14,
-                            color: Colors.white.withOpacity(0.9),
-                          ),
-                        ),
-                        SizedBox(height: isDesktop ? 16 : 12),
-                        Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: isDesktop ? 16 : 12,
-                                vertical: isDesktop ? 8 : 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(isDesktop ? 12 : 8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.local_fire_department, color: Colors.white, size: 20),
-                                  SizedBox(width: isDesktop ? 8 : 4),
-                                  Text(
-                                    '${_stats['streak']} ngày liên tiếp',
-                                    style: TextStyle(
-                                      fontSize: isDesktop ? 14 : 12,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
+                            Text(
+                              'Chào mừng trở lại!',
+                              style: TextStyle(
+                                fontSize: isDesktop ? 28 : 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
                             ),
-                            SizedBox(width: isDesktop ? 16 : 12),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: isDesktop ? 16 : 12,
-                                vertical: isDesktop ? 8 : 6,
+                            SizedBox(height: isDesktop ? 8 : 4),
+                            Text(
+                              'Tiếp tục hành trình học tập của bạn',
+                              style: TextStyle(
+                                fontSize: isDesktop ? 16 : 14,
+                                color: Colors.white.withOpacity(0.9),
                               ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(isDesktop ? 12 : 8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.stars, color: Colors.white, size: 20),
-                                  SizedBox(width: isDesktop ? 8 : 4),
-                                  Text(
-                                    '${_stats['points']} điểm',
-                                    style: TextStyle(
-                                      fontSize: isDesktop ? 14 : 12,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                            ),
+                            SizedBox(height: isDesktop ? 16 : 12),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isDesktop ? 16 : 12,
+                                    vertical: isDesktop ? 8 : 6,
                                   ),
-                                ],
-                              ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(isDesktop ? 12 : 8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.local_fire_department, color: Colors.white, size: 20),
+                                      SizedBox(width: isDesktop ? 8 : 4),
+                                      Text(
+                                        '${_stats['streak']} ngày liên tiếp',
+                                        style: TextStyle(
+                                          fontSize: isDesktop ? 14 : 12,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(width: isDesktop ? 16 : 12),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isDesktop ? 16 : 12,
+                                    vertical: isDesktop ? 8 : 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(isDesktop ? 12 : 8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.stars, color: Colors.white, size: 20),
+                                      SizedBox(width: isDesktop ? 8 : 4),
+                                      Text(
+                                        '${_stats['points']} điểm',
+                                        style: TextStyle(
+                                          fontSize: isDesktop ? 14 : 12,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  
-                  SizedBox(height: isDesktop ? 24 : 20),
-                  
-                  // Stats Grid
-                  Text(
-                    'Thống kê học tập',
-                    style: TextStyle(
-                      fontSize: isDesktop ? 20 : 18,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1F2937),
-                    ),
-                  ),
-                  SizedBox(height: isDesktop ? 16 : 12),
-                  
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: isDesktop ? 4 : 2,
-                    crossAxisSpacing: isDesktop ? 16 : 12,
-                    mainAxisSpacing: isDesktop ? 16 : 12,
-                    childAspectRatio: isDesktop ? 1.2 : 1.1,
-                    children: [
-                      _buildStatCard(
-                        'Bài học',
-                        '${_stats['completedLessons']}/${_stats['totalLessons']}',
-                        Icons.menu_book,
-                        const Color(0xFF3B82F6),
-                        isDesktop,
                       ),
-                      _buildStatCard(
-                        'Bài thi',
-                        '${_stats['completedTests']}/${_stats['totalTests']}',
-                        Icons.quiz,
-                        const Color(0xFF10B981),
-                        isDesktop,
+                      
+                      SizedBox(height: isDesktop ? 24 : 20),
+                      
+                      // Stats Grid
+                      Text(
+                        'Thống kê học tập',
+                        style: TextStyle(
+                          fontSize: isDesktop ? 20 : 18,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1F2937),
+                        ),
                       ),
-                      _buildStatCard(
-                        'Câu hỏi',
-                        '${_stats['correctAnswers']}/${_stats['totalQuestions']}',
-                        Icons.psychology,
-                        const Color(0xFF8B5CF6),
-                        isDesktop,
+                      SizedBox(height: isDesktop ? 16 : 12),
+                      
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: isDesktop ? 4 : 2,
+                        crossAxisSpacing: isDesktop ? 16 : 12,
+                        mainAxisSpacing: isDesktop ? 16 : 12,
+                        childAspectRatio: isDesktop ? 1.2 : 1.1,
+                        children: [
+                          _buildStatCard(
+                            'Bài học',
+                            '${_stats['completedLessons']}/${_stats['totalLessons']}',
+                            Icons.menu_book,
+                            const Color(0xFF3B82F6),
+                            isDesktop,
+                          ),
+                          _buildStatCard(
+                            'Bài thi',
+                            '${_stats['completedTests']}/${_stats['totalTests']}',
+                            Icons.quiz,
+                            const Color(0xFF10B981),
+                            isDesktop,
+                          ),
+                          _buildStatCard(
+                            'Câu hỏi',
+                            '${_stats['correctAnswers']}/${_stats['totalQuestions']}',
+                            Icons.psychology,
+                            const Color(0xFF8B5CF6),
+                            isDesktop,
+                          ),
+                          _buildStatCard(
+                            'Điểm số',
+                            '${_stats['points']}',
+                            Icons.stars,
+                            const Color(0xFFF59E0B),
+                            isDesktop,
+                          ),
+                        ],
                       ),
-                      _buildStatCard(
-                        'Điểm số',
-                        '${_stats['points']}',
-                        Icons.stars,
-                        const Color(0xFFF59E0B),
-                        isDesktop,
+                      
+                      SizedBox(height: isDesktop ? 24 : 20),
+                      
+                      // Recent Lessons
+                      Text(
+                        'Bài học gần đây',
+                        style: TextStyle(
+                          fontSize: isDesktop ? 20 : 18,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1F2937),
+                        ),
                       ),
+                      SizedBox(height: isDesktop ? 16 : 12),
+                      
+                      ..._recentLessons.map((lesson) => _buildLessonCard(lesson, isDesktop)),
+                      
+                      SizedBox(height: isDesktop ? 24 : 20),
+                      
+                      // Recent Tests
+                      Text(
+                        'Bài thi gần đây',
+                        style: TextStyle(
+                          fontSize: isDesktop ? 20 : 18,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1F2937),
+                        ),
+                      ),
+                      SizedBox(height: isDesktop ? 16 : 12),
+                      
+                      ..._recentTests.map((test) => _buildTestCard(test, isDesktop)),
                     ],
                   ),
-                  
-                  SizedBox(height: isDesktop ? 24 : 20),
-                  
-                  // Recent Lessons
-                  Text(
-                    'Bài học gần đây',
-                    style: TextStyle(
-                      fontSize: isDesktop ? 20 : 18,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1F2937),
-                    ),
-                  ),
-                  SizedBox(height: isDesktop ? 16 : 12),
-                  
-                  ..._recentLessons.map((lesson) => _buildLessonCard(lesson, isDesktop)),
-                  
-                  SizedBox(height: isDesktop ? 24 : 20),
-                  
-                  // Recent Tests
-                  Text(
-                    'Bài thi gần đây',
-                    style: TextStyle(
-                      fontSize: isDesktop ? 20 : 18,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1F2937),
-                    ),
-                  ),
-                  SizedBox(height: isDesktop ? 16 : 12),
-                  
-                  ..._recentTests.map((test) => _buildTestCard(test, isDesktop)),
-                ],
+                ),
+    );
+  }
+
+  Widget _buildLoginPrompt(bool isDesktop) {
+    return Center(
+      child: Container(
+        margin: EdgeInsets.all(isDesktop ? 32 : 24),
+        padding: EdgeInsets.all(isDesktop ? 32 : 24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(isDesktop ? 20 : 16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: isDesktop ? 80 : 60,
+              height: isDesktop ? 80 : 60,
+              decoration: BoxDecoration(
+                color: const Color(0xFF3B82F6).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(isDesktop ? 20 : 16),
+              ),
+              child: Icon(
+                Icons.lock_outline,
+                size: isDesktop ? 40 : 30,
+                color: const Color(0xFF3B82F6),
               ),
             ),
+            SizedBox(height: isDesktop ? 24 : 20),
+            Text(
+              'Cần đăng nhập',
+              style: TextStyle(
+                fontSize: isDesktop ? 24 : 20,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF1F2937),
+              ),
+            ),
+            SizedBox(height: isDesktop ? 12 : 8),
+            Text(
+              'Để xem dashboard và thống kê học tập, bạn cần đăng nhập vào tài khoản.',
+              style: TextStyle(
+                fontSize: isDesktop ? 16 : 14,
+                color: const Color(0xFF6B7280),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: isDesktop ? 32 : 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/signin');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3B82F6),
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: isDesktop ? 16 : 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(isDesktop ? 12 : 8),
+                  ),
+                ),
+                child: Text(
+                  'Đăng nhập ngay',
+                  style: TextStyle(
+                    fontSize: isDesktop ? 16 : 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: isDesktop ? 16 : 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/signup');
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF3B82F6),
+                  side: const BorderSide(color: Color(0xFF3B82F6)),
+                  padding: EdgeInsets.symmetric(vertical: isDesktop ? 16 : 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(isDesktop ? 12 : 8),
+                  ),
+                ),
+                child: Text(
+                  'Tạo tài khoản mới',
+                  style: TextStyle(
+                    fontSize: isDesktop ? 16 : 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

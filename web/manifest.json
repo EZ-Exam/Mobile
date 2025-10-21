@@ -1,11 +1,11 @@
 {
-    "name": "phygen_mobile",
-    "short_name": "phygen_mobile",
+    "name": "EZEXAM Mobile",
+    "short_name": "EZEXAM",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "EZEXAM Mobile - AI-Powered Exam Preparation Platform",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import '../services/api_service.dart';
 
 class QuestionBankPage extends StatefulWidget {
   const QuestionBankPage({super.key});
@@ -10,12 +9,16 @@ class QuestionBankPage extends StatefulWidget {
 }
 
 class _QuestionBankPageState extends State<QuestionBankPage> {
+  final ApiService _apiService = ApiService();
   bool _isLoading = true;
   List<Map<String, dynamic>> _questions = [];
   String _searchQuery = '';
   String _selectedDifficulty = 'all';
   String _sortBy = 'createdAt';
   String _sortOrder = 'desc';
+  int _currentPage = 1;
+  bool _hasMoreData = true;
+  String? _error;
 
   final List<Map<String, String>> _difficulties = [
     {'id': 'all', 'name': 'Tất cả'},
@@ -31,103 +34,121 @@ class _QuestionBankPageState extends State<QuestionBankPage> {
     _loadQuestions();
   }
 
-  Future<void> _loadQuestions() async {
+  Future<void> _loadQuestions({bool isRefresh = false}) async {
+    if (isRefresh) {
+      setState(() {
+        _currentPage = 1;
+        _hasMoreData = true;
+        _questions.clear();
+        _error = null;
+      });
+    }
+
+    if (!_hasMoreData) return;
+
     setState(() => _isLoading = true);
     
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 1));
+      print('🔍 Loading questions - Page: $_currentPage, Difficulty: $_selectedDifficulty, Sort: $_sortBy:$_sortOrder');
       
-      setState(() {
-        _questions = [
-          {
-            'id': '1',
-            'content': 'Tìm nghiệm của phương trình: 2x + 3 = 7',
-            'lessonName': 'Đại số cơ bản',
-            'chapterName': 'Phương trình bậc nhất',
-            'difficultyLevelId': 1,
-            'questionSource': 'SGK Toán 10',
-            'subjectName': 'Toán học',
-          },
-          {
-            'id': '2',
-            'content': 'Một vật có khối lượng 2kg chuyển động với vận tốc 5m/s. Tính động năng của vật.',
-            'lessonName': 'Cơ học Newton',
-            'chapterName': 'Động năng',
-            'difficultyLevelId': 2,
-            'questionSource': 'SGK Vật lý 10',
-            'subjectName': 'Vật lý',
-          },
-          {
-            'id': '3',
-            'content': 'Viết phương trình phản ứng khi cho Na tác dụng với H2O',
-            'lessonName': 'Hóa học vô cơ',
-            'chapterName': 'Kim loại kiềm',
-            'difficultyLevelId': 2,
-            'questionSource': 'SGK Hóa học 10',
-            'subjectName': 'Hóa học',
-          },
-          {
-            'id': '4',
-            'content': 'Tế bào nhân thực có những đặc điểm nào sau đây?',
-            'lessonName': 'Sinh học tế bào',
-            'chapterName': 'Cấu trúc tế bào',
-            'difficultyLevelId': 1,
-            'questionSource': 'SGK Sinh học 10',
-            'subjectName': 'Sinh học',
-          },
-          {
-            'id': '5',
-            'content': 'Phân tích nghệ thuật sử dụng từ ngữ trong đoạn thơ sau...',
-            'lessonName': 'Văn học hiện đại',
-            'chapterName': 'Thơ ca Việt Nam',
-            'difficultyLevelId': 3,
-            'questionSource': 'SGK Ngữ văn 12',
-            'subjectName': 'Ngữ văn',
-          },
-          {
-            'id': '6',
-            'content': 'Choose the correct form: "If I _____ you, I would study harder."',
-            'lessonName': 'Grammar Advanced',
-            'chapterName': 'Conditional Sentences',
-            'difficultyLevelId': 3,
-            'questionSource': 'Cambridge English',
-            'subjectName': 'Tiếng Anh',
-          },
-        ];
-      });
+      final response = await _apiService.getQuestions(
+        pageNumber: _currentPage,
+        pageSize: 10,
+        difficultyLevelId: _selectedDifficulty == 'all' ? null : _selectedDifficulty,
+        sortBy: _sortBy,
+        sortOrder: _sortOrder,
+      );
+      
+      print('🔍 Questions Response: $response');
+      
+      // Debug: Print first question structure if available
+      if (response['items'] != null && response['items'].isNotEmpty) {
+        print('🔍 First Question Structure: ${response['items'][0]}');
+        print('🔍 Question Fields: ${response['items'][0].keys.toList()}');
+      }
+      
+      if (response['items'] != null) {
+        final newQuestions = List<Map<String, dynamic>>.from(response['items']);
+        
+        setState(() {
+          if (isRefresh) {
+            _questions = newQuestions;
+          } else {
+            _questions.addAll(newQuestions);
+          }
+          
+          _hasMoreData = response['pageNumber'] < response['totalPages'];
+          _currentPage++;
+        });
+        
+        print('🔍 Loaded ${newQuestions.length} questions. Total: ${_questions.length}');
+        print('🔍 Pagination: Page ${response['pageNumber']} of ${response['totalPages']}');
+      } else {
+        setState(() {
+          _hasMoreData = false;
+        });
+      }
     } catch (e) {
-      print('Error loading questions: $e');
+      print('❌ Error loading questions: $e');
+      setState(() {
+        _error = e.toString();
+      });
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
+  Future<void> _onRefresh() async {
+    await _loadQuestions(isRefresh: true);
+  }
+
+  Future<void> _loadMore() async {
+    await _loadQuestions();
+  }
+
+  void _onDifficultyChanged(String difficulty) {
+    setState(() {
+      _selectedDifficulty = difficulty;
+    });
+    _loadQuestions(isRefresh: true);
+  }
+
+
   List<Map<String, dynamic>> get _filteredQuestions {
     return _questions.where((question) {
+      // Safe null handling for all fields
+      final content = question['content']?.toString() ?? '';
+      final lessonName = question['lessonName']?.toString() ?? '';
+      final subjectName = question['subjectName']?.toString() ?? '';
+      final chapterName = question['chapterName']?.toString() ?? '';
+      
       final matchesSearch = _searchQuery.isEmpty ||
-          question['content'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          question['lessonName'].toLowerCase().contains(_searchQuery.toLowerCase());
+          content.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          lessonName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          subjectName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          chapterName.toLowerCase().contains(_searchQuery.toLowerCase());
       
       final matchesDifficulty = _selectedDifficulty == 'all' ||
-          question['difficultyLevelId'].toString() == _selectedDifficulty;
+          question['difficultyLevelId']?.toString() == _selectedDifficulty;
       
       return matchesSearch && matchesDifficulty;
     }).toList();
   }
 
-  Map<String, dynamic> _getDifficultyInfo(int difficultyLevelId) {
-    switch (difficultyLevelId) {
-      case 1: return {'text': 'Nhận biết', 'color': const Color(0xFF10B981)};
-      case 2: return {'text': 'Thông hiểu', 'color': const Color(0xFFF59E0B)};
-      case 3: return {'text': 'Vận dụng', 'color': const Color(0xFFEF4444)};
-      case 4: return {'text': 'Vận dụng cao', 'color': const Color(0xFF8B5CF6)};
+  Map<String, dynamic> _getDifficultyInfo(dynamic difficultyLevelId) {
+    final level = difficultyLevelId?.toString() ?? '1';
+    switch (level) {
+      case '1': return {'text': 'Nhận biết', 'color': const Color(0xFF10B981)};
+      case '2': return {'text': 'Thông hiểu', 'color': const Color(0xFFF59E0B)};
+      case '3': return {'text': 'Vận dụng', 'color': const Color(0xFFEF4444)};
+      case '4': return {'text': 'Vận dụng cao', 'color': const Color(0xFF8B5CF6)};
       default: return {'text': 'Unknown', 'color': const Color(0xFF6B7280)};
     }
   }
 
-  Color _getSubjectColor(String subjectName) {
-    switch (subjectName) {
+  Color _getSubjectColor(String? subjectName) {
+    final subject = subjectName?.toString() ?? '';
+    switch (subject) {
       case 'Toán học': return const Color(0xFF3B82F6);
       case 'Vật lý': return const Color(0xFF8B5CF6);
       case 'Hóa học': return const Color(0xFF10B981);
@@ -147,17 +168,51 @@ class _QuestionBankPageState extends State<QuestionBankPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: _isLoading
+      body: _isLoading && _questions.isEmpty
           ? const Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
               ),
             )
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(isDesktop ? 24 : 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          : _error != null && _questions.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: Colors.red,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Lỗi: $_error',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.red,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => _loadQuestions(isRefresh: true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3B82F6),
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Thử lại'),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _onRefresh,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.all(isDesktop ? 24 : 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                   // Header
                   Container(
                     width: double.infinity,
@@ -352,11 +407,7 @@ class _QuestionBankPageState extends State<QuestionBankPage> {
                           children: _difficulties.map((difficulty) {
                             final isSelected = _selectedDifficulty == difficulty['id'];
                             return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _selectedDifficulty = difficulty['id']!;
-                                });
-                              },
+                              onTap: () => _onDifficultyChanged(difficulty['id']!),
                               child: Container(
                                 padding: EdgeInsets.symmetric(
                                   horizontal: isDesktop ? 16 : 12,
@@ -445,18 +496,67 @@ class _QuestionBankPageState extends State<QuestionBankPage> {
                       ),
                     )
                   else
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _filteredQuestions.length,
-                      itemBuilder: (context, index) {
-                        final question = _filteredQuestions[index];
-                        return _buildQuestionCard(question, isDesktop);
-                      },
+                    Column(
+                      children: [
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _filteredQuestions.length,
+                          itemBuilder: (context, index) {
+                            final question = _filteredQuestions[index];
+                            return _buildQuestionCard(question, isDesktop);
+                          },
+                        ),
+                        if (_hasMoreData) _buildLoadMoreButton(isDesktop),
+                      ],
                     ),
                 ],
               ),
             ),
+          ),
+    );
+  }
+
+  Widget _buildLoadMoreButton(bool isDesktop) {
+    return Container(
+      margin: EdgeInsets.only(top: isDesktop ? 20 : 16),
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _loadMore,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF3B82F6),
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(
+            horizontal: isDesktop ? 32 : 24,
+            vertical: isDesktop ? 16 : 12,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(isDesktop ? 12 : 8),
+          ),
+        ),
+        child: _isLoading
+            ? SizedBox(
+                height: isDesktop ? 20 : 16,
+                width: isDesktop ? 20 : 16,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.expand_more),
+                  SizedBox(width: isDesktop ? 8 : 4),
+                  Text(
+                    'Tải thêm',
+                    style: TextStyle(
+                      fontSize: isDesktop ? 16 : 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 
@@ -518,23 +618,36 @@ class _QuestionBankPageState extends State<QuestionBankPage> {
   Widget _buildQuestionCard(Map<String, dynamic> question, bool isDesktop) {
     final difficultyInfo = _getDifficultyInfo(question['difficultyLevelId']);
     
-    return Container(
-      margin: EdgeInsets.only(bottom: isDesktop ? 16 : 12),
-      padding: EdgeInsets.all(isDesktop ? 20 : 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(isDesktop ? 16 : 12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return InkWell(
+      onTap: () {
+        // Navigate to question detail when tapped
+        Navigator.pushNamed(
+          context,
+          '/question-detail',
+          arguments: {
+            'questionId': question['id']?.toString() ?? 'N/A',
+            'questionData': question,
+          },
+        );
+      },
+      borderRadius: BorderRadius.circular(isDesktop ? 16 : 12),
+      child: Container(
+        margin: EdgeInsets.only(bottom: isDesktop ? 16 : 12),
+        padding: EdgeInsets.all(isDesktop ? 20 : 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(isDesktop ? 16 : 12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // Header
           Row(
             children: [
@@ -556,15 +669,15 @@ class _QuestionBankPageState extends State<QuestionBankPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      question['subjectName'],
+                      question['subjectName']?.toString() ?? 'Không xác định',
                       style: TextStyle(
                         fontSize: isDesktop ? 14 : 12,
                         fontWeight: FontWeight.bold,
-                        color: _getSubjectColor(question['subjectName']),
+                        color: _getSubjectColor(question['subjectName']?.toString() ?? ''),
                       ),
                     ),
                     Text(
-                      'Question #${question['id']}',
+                      'Question #${question['id']?.toString() ?? 'N/A'}',
                       style: TextStyle(
                         fontSize: isDesktop ? 12 : 10,
                         color: Colors.grey[600],
@@ -598,7 +711,7 @@ class _QuestionBankPageState extends State<QuestionBankPage> {
           
           // Question Content
           Text(
-            question['content'],
+            question['content']?.toString() ?? 'Không có nội dung',
             style: TextStyle(
               fontSize: isDesktop ? 16 : 14,
               fontWeight: FontWeight.bold,
@@ -627,7 +740,7 @@ class _QuestionBankPageState extends State<QuestionBankPage> {
                     SizedBox(width: isDesktop ? 8 : 6),
                     Expanded(
                       child: Text(
-                        'Bài học: ${question['lessonName']}',
+                        'Bài học: ${question['lessonName']?.toString() ?? 'Không xác định'}',
                         style: TextStyle(
                           fontSize: isDesktop ? 14 : 12,
                           color: Colors.grey[700],
@@ -636,7 +749,7 @@ class _QuestionBankPageState extends State<QuestionBankPage> {
                     ),
                   ],
                 ),
-                if (question['chapterName'] != null) ...[
+                if (question['chapterName']?.toString().isNotEmpty == true) ...[
                   SizedBox(height: isDesktop ? 8 : 6),
                   Row(
                     children: [
@@ -648,7 +761,7 @@ class _QuestionBankPageState extends State<QuestionBankPage> {
                       SizedBox(width: isDesktop ? 8 : 6),
                       Expanded(
                         child: Text(
-                          'Chương: ${question['chapterName']}',
+                          'Chương: ${question['chapterName']?.toString() ?? 'Không xác định'}',
                           style: TextStyle(
                             fontSize: isDesktop ? 14 : 12,
                             color: Colors.grey[700],
@@ -669,7 +782,7 @@ class _QuestionBankPageState extends State<QuestionBankPage> {
                     SizedBox(width: isDesktop ? 8 : 6),
                     Expanded(
                       child: Text(
-                        'Nguồn: ${question['questionSource']}',
+                        'Nguồn: ${question['questionSource']?.toString() ?? 'Không xác định'}',
                         style: TextStyle(
                           fontSize: isDesktop ? 14 : 12,
                           color: Colors.grey[700],
@@ -684,42 +797,9 @@ class _QuestionBankPageState extends State<QuestionBankPage> {
           
           SizedBox(height: isDesktop ? 16 : 12),
           
-          // Action Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                // Navigate to question detail
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Xem chi tiết câu hỏi #${question['id']}')),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3B82F6),
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: isDesktop ? 12 : 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(isDesktop ? 12 : 8),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.visibility, size: 20),
-                  SizedBox(width: isDesktop ? 8 : 4),
-                  Text(
-                    'Xem chi tiết',
-                    style: TextStyle(
-                      fontSize: isDesktop ? 14 : 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
+    ),
     );
   }
 }

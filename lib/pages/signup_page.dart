@@ -15,6 +15,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
   final ApiService _apiService = ApiService();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   
   bool _showPassword = false;
   bool _showConfirmPassword = false;
@@ -61,47 +62,69 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
   }
 
   Future<void> _signUp() async {
-    if (_fullNameController.text.isEmpty || 
-        _emailController.text.isEmpty || 
-        _passwordController.text.isEmpty ||
-        _confirmPasswordController.text.isEmpty) {
-      _showSnackBar('Vui lòng điền đầy đủ thông tin', isError: true);
-      return;
-    }
-
-    if (_passwordController.text != _confirmPasswordController.text) {
-      _showSnackBar('Mật khẩu xác nhận không khớp', isError: true);
-      return;
-    }
-
-    if (_passwordController.text.length < 6) {
-      _showSnackBar('Mật khẩu phải có ít nhất 6 ký tự', isError: true);
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
+      // Test API endpoint first
+      print('🔍 Testing API endpoint...');
+      final isApiWorking = await _apiService.testApiEndpoint();
+      print('🔍 API Test Result: $isApiWorking');
+      
+      if (!isApiWorking) {
+        _showSnackBar('Không thể kết nối đến server. Vui lòng kiểm tra lại URL.', isError: true);
+        return;
+      }
+
       final response = await _apiService.register({
-        'fullName': _fullNameController.text.trim(),
+        'name': _fullNameController.text.trim(),
         'email': _emailController.text.trim(),
         'password': _passwordController.text.trim(),
       });
 
-      if (response['token'] != null) {
-        // Save token
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', response['token']);
+      // Check if registration was successful
+      if (response['message'] != null) {
+        _showSnackBar(response['message']);
         
-        _showSnackBar(response['message'] ?? 'Đăng ký thành công!');
-        
-        // Navigate to main app
+        // Navigate to signin page after successful registration
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/main');
+          Navigator.pushReplacementNamed(context, '/signin');
+        }
+      } else {
+        _showSnackBar('Đăng ký thành công!');
+        
+        // Navigate to signin page
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/signin');
         }
       }
     } catch (e) {
       _showSnackBar('Đăng ký thất bại: ${e.toString()}', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _testApi() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      print('🔍 Testing API endpoint...');
+      final isApiWorking = await _apiService.testApiEndpoint();
+      print('🔍 API Test Result: $isApiWorking');
+      
+      if (isApiWorking) {
+        _showSnackBar('✅ API connection successful!');
+      } else {
+        _showSnackBar('❌ API connection failed. Check console for details.', isError: true);
+      }
+    } catch (e) {
+      _showSnackBar('❌ API test error: ${e.toString()}', isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -142,33 +165,36 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(isDesktop ? 32 : 24),
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: Column(
-                  children: [
-                    SizedBox(height: isDesktop ? 40 : 30),
-                    
-                    // Logo Section
-                    _buildLogoSection(isDesktop),
-                    
-                    SizedBox(height: isDesktop ? 40 : 30),
-                    
-                    // Sign Up Form
-                    _buildSignUpForm(isDesktop),
-                    
-                    SizedBox(height: isDesktop ? 30 : 20),
-                    
-                    // Login Link
-                    _buildLoginLink(isDesktop),
-                  ],
-                ),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(isDesktop ? 32 : 24),
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  SizedBox(height: isDesktop ? 40 : 30),
+                  
+                  // Logo Section
+                  _buildLogoSection(isDesktop),
+                  
+                  SizedBox(height: isDesktop ? 40 : 30),
+                  
+                  // Sign Up Form
+                  _buildSignUpForm(isDesktop),
+                  
+                  SizedBox(height: isDesktop ? 30 : 20),
+                  
+                  // Login Link
+                  _buildLoginLink(isDesktop),
+                ],
               ),
             ),
           ),
+        ),
+      ),
         ),
       ),
     );
@@ -346,6 +372,31 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                     ),
             ),
           ),
+          
+          SizedBox(height: isDesktop ? 16 : 12),
+          
+          // Test API Button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _isLoading ? null : _testApi,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF667eea),
+                side: const BorderSide(color: Color(0xFF667eea)),
+                padding: EdgeInsets.symmetric(vertical: isDesktop ? 16 : 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(isDesktop ? 12 : 10),
+                ),
+              ),
+              child: Text(
+                'Test API Connection',
+                style: TextStyle(
+                  fontSize: isDesktop ? 16 : 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -375,10 +426,35 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
         
         SizedBox(height: isDesktop ? 8 : 6),
         
-        TextField(
+        TextFormField(
           controller: controller,
           keyboardType: keyboardType,
           obscureText: isPassword && !(isConfirmPassword ? _showConfirmPassword : _showPassword),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Vui lòng nhập $label';
+            }
+            
+            if (label == 'Email') {
+              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                return 'Email không hợp lệ';
+              }
+            }
+            
+            if (label == 'Mật khẩu') {
+              if (value.length < 6) {
+                return 'Mật khẩu phải có ít nhất 6 ký tự';
+              }
+            }
+            
+            if (label == 'Xác nhận mật khẩu') {
+              if (value != _passwordController.text) {
+                return 'Mật khẩu xác nhận không khớp';
+              }
+            }
+            
+            return null;
+          },
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: Icon(icon, color: Colors.grey[400]),
@@ -413,6 +489,14 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
               borderRadius: BorderRadius.circular(isDesktop ? 12 : 10),
               borderSide: BorderSide(color: Colors.grey[300]!),
             ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(isDesktop ? 12 : 10),
+              borderSide: const BorderSide(color: Colors.red, width: 2),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(isDesktop ? 12 : 10),
+              borderSide: const BorderSide(color: Colors.red, width: 2),
+            ),
             filled: true,
             fillColor: Colors.grey[50],
             contentPadding: EdgeInsets.symmetric(
@@ -438,7 +522,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
         ),
         TextButton(
           onPressed: () {
-            Navigator.pop(context);
+            Navigator.pushReplacementNamed(context, '/signin');
           },
           child: Text(
             'Đăng nhập ngay',

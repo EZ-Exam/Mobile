@@ -118,7 +118,7 @@ class _MainScreenState extends State<MainScreen> {
             return _buildPlaceholder(
               t.home,
               Icons.home,
-              "Welcome to PhyGen!",
+              "Welcome to EZEXAM!",
               screen,
             );
           }
