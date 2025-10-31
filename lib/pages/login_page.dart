@@ -78,6 +78,15 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', response['token']);
         
+        // Fetch and store userId for later payment-related calls
+        try {
+          final profile = await _apiService.getUserProfile();
+          final dynamic id = profile['id'];
+          if (id != null) {
+            await prefs.setString('userId', id.toString());
+          }
+        } catch (_) {}
+        
         _showSnackBar(response['message'] ?? 'Đăng nhập thành công!');
         
         // Navigate to main app
@@ -123,6 +132,15 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         // Save token
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', response['data']['token']);
+        
+        // Fetch and store userId for later payment-related calls
+        try {
+          final profile = await _apiService.getUserProfile();
+          final dynamic id = profile['id'];
+          if (id != null) {
+            await prefs.setString('userId', id.toString());
+          }
+        } catch (_) {}
         
         _showSnackBar('Đăng nhập Google thành công!');
         
@@ -494,7 +512,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildGoogleSignIn(bool isDesktop) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: _isGoogleLoading ? null : _googleLogin,

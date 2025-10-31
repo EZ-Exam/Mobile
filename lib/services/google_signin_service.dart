@@ -1,6 +1,4 @@
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../config/api_config.dart';
 import 'api_service.dart';
 

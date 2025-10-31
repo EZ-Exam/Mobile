@@ -197,6 +197,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final isDesktop = screenWidth > 768;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Profile'),
@@ -210,7 +211,10 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ],
       ),
-      body: _isLoading && _userProfile.isEmpty
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: _isLoading && _userProfile.isEmpty
           ? const Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
@@ -612,6 +616,30 @@ class _ProfilePageState extends State<ProfilePage> {
                           Icons.account_balance_wallet,
                           isDesktop,
                         ),
+                        SizedBox(height: isDesktop ? 16 : 12),
+                        _buildNavigationTile(
+                          context,
+                          'Nạp tiền',
+                          Icons.add_card,
+                          '/deposit-funds',
+                          isDesktop,
+                        ),
+                        SizedBox(height: isDesktop ? 16 : 12),
+                        _buildNavigationTile(
+                          context,
+                          'Nâng cấp gói',
+                          Icons.workspace_premium,
+                          '/upgrade-subscription',
+                          isDesktop,
+                        ),
+                        SizedBox(height: isDesktop ? 16 : 12),
+                        _buildNavigationTile(
+                          context,
+                          'Lịch sử giao dịch',
+                          Icons.history,
+                          '/transaction-history',
+                          isDesktop,
+                        ),
                       ],
                     ),
                   ),
@@ -662,9 +690,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       ],
                     ),
                   ),
+                  SizedBox(height: MediaQuery.of(context).viewPadding.bottom + 24),
                 ],
               ),
             ),
+      ),
     );
   }
 
@@ -784,6 +814,44 @@ class _ProfilePageState extends State<ProfilePage> {
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNavigationTile(BuildContext context, String title, IconData icon, String routeName, bool isDesktop) {
+    return InkWell(
+      onTap: () => Navigator.pushNamed(context, routeName),
+      child: Container(
+        padding: EdgeInsets.all(isDesktop ? 16 : 12),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(isDesktop ? 12 : 8),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(isDesktop ? 10 : 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3B82F6).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(isDesktop ? 10 : 8),
+              ),
+              child: Icon(icon, color: const Color(0xFF3B82F6), size: isDesktop ? 22 : 18),
+            ),
+            SizedBox(width: isDesktop ? 12 : 10),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: isDesktop ? 16 : 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1F2937),
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right, color: Colors.grey[500], size: isDesktop ? 24 : 20),
+          ],
+        ),
       ),
     );
   }

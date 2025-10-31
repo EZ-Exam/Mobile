@@ -1,3 +1,4 @@
+
 // routes.dart
 import 'package:flutter/material.dart';
 import 'mainscreen.dart';
@@ -11,6 +12,11 @@ import 'pages/question_detail_page.dart';
 import 'pages/question_practice_page.dart';
 import 'pages/question_practice_demo.dart';
 import 'pages/exam_page.dart';
+import 'pages/create_mock_test_page.dart';
+import 'pages/generate_mock_test_ai_page.dart';
+import 'pages/upgrade_subscription_page.dart';
+import 'pages/deposit_funds_page.dart';
+import 'pages/transaction_history_page.dart';
 
 class AppRoutes {
   static const String signIn = '/signin';
@@ -25,6 +31,11 @@ class AppRoutes {
   static const String questionDetail = '/question-detail';
   static const String questionPractice = '/question-practice';
   static const String questionPracticeDemo = '/question-practice-demo';
+  static const String createMockTest = '/create-mock-test';
+  static const String generateMockTestAi = '/generate-mock-test-ai';
+  static const String upgradeSubscription = '/upgrade-subscription';
+  static const String depositFunds = '/deposit-funds';
+  static const String transactionHistory = '/transaction-history';
 
   static Map<String, WidgetBuilder> get routes {
     return {
@@ -71,6 +82,12 @@ class AppRoutes {
           durationSeconds: args?['durationSeconds'] as int?,
         );
       },
+      createMockTest: (context) => const CreateMockTestPage(),
+      generateMockTestAi: (context) => const GenerateMockTestAiPage(),
+      upgradeSubscription: (context) => const UpgradeSubscriptionPage(),
+      depositFunds: (context) => const DepositFundsPage(),
+      transactionHistory: (context) => const TransactionHistoryPage(),
     };
   }
 }
+

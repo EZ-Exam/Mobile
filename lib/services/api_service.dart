@@ -1,7 +1,9 @@
+
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import 'cache_service.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -9,6 +11,7 @@ class ApiService {
   ApiService._internal();
 
   final http.Client _client = http.Client();
+  final CacheService _cache = CacheService();
 
   // =========================
   // QUIZ MODULE (clone gốc)
@@ -99,15 +102,16 @@ class ApiService {
     return token;
   }
 
+  // =========================
+  // AUTH METHODS
+  // =========================
+
   // Login with email and password
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await _client.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.loginEndpoint}'),
-        headers: {
-          ...ApiConfig.defaultHeaders,
-          'Content-Type': 'application/json',
-        },
+        headers: ApiConfig.defaultHeaders,
         body: json.encode({
           'email': email,
           'password': password,
@@ -252,15 +256,33 @@ class ApiService {
   Future<Map<String, dynamic>> getLessonDetails(String lessonId) async {
     try {
       final token = await _getToken();
+      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.lessonsEndpoint}/$lessonId');
+
       final response = await _client.get(
-        Uri.parse('${ApiConfig.baseUrl}/lessons/$lessonId'),
+        uri,
         headers: {
           ...ApiConfig.defaultHeaders,
-          'Authorization': 'Bearer $token',
+          if (token.isNotEmpty) 'Authorization': 'Bearer $token',
         },
       ).timeout(Duration(milliseconds: ApiConfig.timeout));
 
-      return _handleResponse(response);
+      // The frontend returns the lesson object directly; decode flexibly
+      final decoded = json.decode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (decoded is Map<String, dynamic>) return decoded;
+        // If backend wrapped data in { data: { ... } }
+        if (decoded is Map && decoded['data'] is Map) {
+          return Map<String, dynamic>.from(decoded['data']);
+        }
+        throw Exception('Unexpected lesson response format');
+      } else {
+        try {
+          final errorData = decoded is Map ? decoded : {'message': response.reasonPhrase};
+          throw Exception(errorData['message'] ?? 'Failed to get lesson details');
+        } catch (e) {
+          throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
+        }
+      }
     } catch (e) {
       throw Exception('Get lesson details failed: $e');
     }
@@ -269,12 +291,19 @@ class ApiService {
   // Get questions for a lesson
   Future<Map<String, dynamic>> getLessonQuestions(String lessonId) async {
     try {
+      // The frontend uses /lessons-enhanced/:id which includes a `questions` array
+      final lesson = await getLessonDetails(lessonId);
+      // If the lesson contains a `questions` field return it wrapped
+      if (lesson.containsKey('questions')) {
+        return {'questions': lesson['questions']};
+      }
+      // Fallback: call legacy endpoint for lesson questions
       final token = await _getToken();
       final response = await _client.get(
         Uri.parse('${ApiConfig.baseUrl}/lessons/$lessonId/questions'),
         headers: {
           ...ApiConfig.defaultHeaders,
-          'Authorization': 'Bearer $token',
+          if (token.isNotEmpty) 'Authorization': 'Bearer $token',
         },
       ).timeout(Duration(milliseconds: ApiConfig.timeout));
 
@@ -288,11 +317,22 @@ class ApiService {
   Future<Map<String, dynamic>> getQuestions({
     int pageNumber = 1,
     int pageSize = 10,
-    String? subjectId,
+    String? search,
+    String? lessonId,
     String? difficultyLevelId,
+    String? chapterId,
+    String? gradeId,
+    String? userId,
+    String? textbookId,
     String sortBy = 'createdAt',
     String sortOrder = 'desc',
   }) async {
+    final cacheKey = 'questions_p${pageNumber}_s${pageSize}_${search}_${lessonId}_${difficultyLevelId}_${chapterId}_${gradeId}_${userId}_${textbookId}_${sortBy}_$sortOrder';
+    final cachedData = _cache.get(cacheKey);
+    if (cachedData != null) {
+      return cachedData;
+    }
+
     try {
       final queryParams = <String, String>{
         'pageNumber': pageNumber.toString(),
@@ -301,12 +341,13 @@ class ApiService {
         'isSort': '1',
       };
 
-      if (subjectId != null) {
-        queryParams['subjectId'] = subjectId;
-      }
-      if (difficultyLevelId != null) {
-        queryParams['difficultyLevelId'] = difficultyLevelId;
-      }
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+      if (lessonId != null) queryParams['lessonId'] = lessonId;
+      if (difficultyLevelId != null) queryParams['difficultyLevelId'] = difficultyLevelId;
+      if (chapterId != null) queryParams['chapterId'] = chapterId;
+      if (gradeId != null) queryParams['gradeId'] = gradeId;
+      if (userId != null) queryParams['userId'] = userId;
+      if (textbookId != null) queryParams['textbookId'] = textbookId;
 
       final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.questionsEndpoint}')
           .replace(queryParameters: queryParams);
@@ -316,32 +357,69 @@ class ApiService {
         headers: ApiConfig.defaultHeaders,
       ).timeout(Duration(milliseconds: ApiConfig.timeout));
 
-      return _handleResponse(response);
+      final data = _handleResponse(response);
+      _cache.set(cacheKey, data);
+      return data;
     } catch (e) {
-      print('❌ Failed to get questions: $e');
       throw Exception('Failed to get questions: $e');
     }
   }
 
-  // Get lessons
+  // Get question details by ID
+  Future<Map<String, dynamic>> getQuestionDetails(String questionId) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.questionsEndpoint}/$questionId');
+      final response = await _client.get(
+        uri,
+        headers: ApiConfig.defaultHeaders,
+      ).timeout(Duration(milliseconds: ApiConfig.timeout));
+
+      // Questions endpoint usually returns an object directly
+      final decoded = json.decode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is Map && decoded['data'] is Map) return Map<String, dynamic>.from(decoded['data']);
+        throw Exception('Unexpected question response format');
+      } else {
+        try {
+          final errorData = decoded is Map ? decoded : {'message': response.reasonPhrase};
+          throw Exception(errorData['message'] ?? 'API request failed');
+        } catch (e) {
+          throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
+        }
+      }
+    } catch (e) {
+      throw Exception('Failed to get question details: $e');
+    }
+  }
+
+  // Get enhanced lessons
   Future<Map<String, dynamic>> getLessons({
     int pageNumber = 1,
-    int pageSize = 6,
+    int pageSize = 10,
+    String? chapterId,
     String? subjectId,
-    String sortBy = 'title',
-    String sortOrder = 'asc',
+    String? gradeId,
+    String? sortBy,
+    String? sortOrder,
   }) async {
+    final cacheKey = 'lessons_p${pageNumber}_s${pageSize}_${chapterId}_${subjectId}_${gradeId}_${sortBy}_$sortOrder';
+    final cachedData = _cache.get(cacheKey);
+    if (cachedData != null) {
+      return cachedData;
+    }
+
     try {
       final queryParams = <String, String>{
-        'pageNumber': pageNumber.toString(),
+        'page': pageNumber.toString(),
         'pageSize': pageSize.toString(),
-        'sort': '$sortBy:$sortOrder',
-        'isSort': '1',
       };
 
-      if (subjectId != null) {
-        queryParams['subjectId'] = subjectId;
-      }
+      if (chapterId != null) queryParams['chapterId'] = chapterId;
+      if (subjectId != null) queryParams['subjectId'] = subjectId;
+      if (gradeId != null) queryParams['gradeId'] = gradeId;
+      if (sortBy != null) queryParams['sortBy'] = sortBy;
+      if (sortOrder != null) queryParams['sortOrder'] = sortOrder;
 
       final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.lessonsEndpoint}')
           .replace(queryParameters: queryParams);
@@ -351,19 +429,59 @@ class ApiService {
         headers: ApiConfig.defaultHeaders,
       ).timeout(Duration(milliseconds: ApiConfig.timeout));
 
-      return _handleResponse(response);
+      // Some backends may return an array directly instead of an object
+      final decoded = json.decode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        Map<String, dynamic> normalized;
+        if (decoded is List) {
+          normalized = {
+            'items': List<Map<String, dynamic>>.from(decoded),
+            'totalItems': decoded.length,
+            'page': 1,
+            'pageSize': decoded.length,
+            'totalPages': 1,
+          };
+        } else if (decoded is Map) {
+          // If wrapped under data, unwrap if it contains a list
+          if (decoded['data'] is List) {
+            final list = List<Map<String, dynamic>>.from(decoded['data']);
+            normalized = {
+              'items': list,
+              'totalItems': decoded['totalItems'] ?? list.length,
+              'page': decoded['page'] ?? decoded['pageNumber'] ?? 1,
+              'pageSize': decoded['pageSize'] ?? list.length,
+              'totalPages': decoded['totalPages'] ?? 1,
+            };
+          } else {
+            normalized = Map<String, dynamic>.from(decoded);
+          }
+        } else {
+          throw Exception('Unexpected lessons response format');
+        }
+        _cache.set(cacheKey, normalized);
+        return normalized;
+      } else {
+        try {
+          final errorData = decoded is Map ? decoded : {'message': response.reasonPhrase};
+          throw Exception(errorData['message'] ?? 'Failed to get lessons');
+        } catch (e) {
+          throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
+        }
+      }
     } catch (e) {
       throw Exception('Failed to get lessons: $e');
     }
   }
 
-  // Get mock tests
+  // Get exams (mock tests)
   Future<Map<String, dynamic>> getMockTests({
     int pageNumber = 1,
     int pageSize = 6,
     String? search,
     String? subjectId,
-    String? difficultyLevel,
+    String? lessonId,
+    String? examTypeId,
+    String? createdByUserId,
     String sortBy = 'name',
     String sortOrder = 'asc',
   }) async {
@@ -375,15 +493,11 @@ class ApiService {
         'isSort': '1',
       };
 
-      if (search != null && search.isNotEmpty) {
-        queryParams['search'] = search;
-      }
-      if (subjectId != null) {
-        queryParams['subjectId'] = subjectId;
-      }
-      if (difficultyLevel != null) {
-        queryParams['difficultyLevel'] = difficultyLevel;
-      }
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+      if (subjectId != null) queryParams['subjectId'] = subjectId;
+      if (lessonId != null) queryParams['lessonId'] = lessonId;
+      if (examTypeId != null) queryParams['examTypeId'] = examTypeId;
+      if (createdByUserId != null) queryParams['createdByUserId'] = createdByUserId;
 
       final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.mockTestsEndpoint}')
           .replace(queryParameters: queryParams);
@@ -396,6 +510,87 @@ class ApiService {
       return _handleResponse(response);
     } catch (e) {
       throw Exception('Failed to get mock tests: $e');
+    }
+  }
+
+  // Get subjects
+  Future<List<Map<String, dynamic>>> getSubjects() async {
+    try {
+      final response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.subjectsEndpoint}'),
+        headers: ApiConfig.defaultHeaders,
+      ).timeout(Duration(milliseconds: ApiConfig.timeout));
+
+      final data = _handleResponse(response);
+      return List<Map<String, dynamic>>.from(data['data'] ?? []);
+    } catch (e) {
+      throw Exception('Failed to get subjects: $e');
+    }
+  }
+
+  // Get semesters by grade
+  Future<List<Map<String, dynamic>>> getSemestersByGrade(String gradeId) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.semestersEndpoint}/by-grade/$gradeId'),
+        headers: ApiConfig.defaultHeaders,
+      ).timeout(Duration(milliseconds: ApiConfig.timeout));
+
+      final decoded = json.decode(response.body);
+      if (decoded is List) return List<Map<String, dynamic>>.from(decoded);
+      if (decoded is Map && decoded['data'] is List) return List<Map<String, dynamic>>.from(decoded['data']);
+      throw Exception('Unexpected semesters response format');
+    } catch (e) {
+      throw Exception('Failed to get semesters: $e');
+    }
+  }
+
+  // Get chapters by semester
+  Future<List<Map<String, dynamic>>> getChaptersBySemester(String semesterId) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.chaptersEndpoint}/by-semester/$semesterId'),
+        headers: ApiConfig.defaultHeaders,
+      ).timeout(Duration(milliseconds: ApiConfig.timeout));
+
+      final decoded = json.decode(response.body);
+      if (decoded is List) return List<Map<String, dynamic>>.from(decoded);
+      if (decoded is Map && decoded['data'] is List) return List<Map<String, dynamic>>.from(decoded['data']);
+      throw Exception('Unexpected chapters response format');
+    } catch (e) {
+      throw Exception('Failed to get chapters: $e');
+    }
+  }
+
+  // Get chapters by semester and subject
+  Future<List<Map<String, dynamic>>> getChaptersBySemesterAndSubject(String semesterId, String subjectId) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.chaptersEndpoint}/semester/$semesterId/subject/$subjectId'),
+        headers: ApiConfig.defaultHeaders,
+      ).timeout(Duration(milliseconds: ApiConfig.timeout));
+
+      final decoded = json.decode(response.body);
+      if (decoded is List) return List<Map<String, dynamic>>.from(decoded);
+      if (decoded is Map && decoded['data'] is List) return List<Map<String, dynamic>>.from(decoded['data']);
+      throw Exception('Unexpected chapters response format');
+    } catch (e) {
+      throw Exception('Failed to get chapters: $e');
+    }
+  }
+
+  // Get difficulty levels
+  Future<List<Map<String, dynamic>>> getDifficultyLevels() async {
+    try {
+      final response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.difficultyLevelsEndpoint}'),
+        headers: ApiConfig.defaultHeaders,
+      ).timeout(Duration(milliseconds: ApiConfig.timeout));
+
+      final data = _handleResponse(response);
+      return List<Map<String, dynamic>>.from(data['data'] ?? []);
+    } catch (e) {
+      throw Exception('Failed to get difficulty levels: $e');
     }
   }
 
@@ -556,6 +751,149 @@ class ApiService {
         print('❌ Error Parse Error: $e');
         throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
       }
+    }
+  }
+
+  // =========================
+  // PAYMENT & SUBSCRIPTION
+  // =========================
+
+  // Get all subscription types
+  Future<List<Map<String, dynamic>>> getSubscriptionTypes() async {
+    try {
+      final response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.subscriptionTypesEndpoint}'),
+        headers: ApiConfig.defaultHeaders,
+      ).timeout(Duration(milliseconds: ApiConfig.timeout));
+
+      // This endpoint may return an array directly
+      final decoded = json.decode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (decoded is List) return List<Map<String, dynamic>>.from(decoded);
+        if (decoded is Map && decoded['data'] is List) {
+          return List<Map<String, dynamic>>.from(decoded['data']);
+        }
+        // Fallback to empty list
+        return <Map<String, dynamic>>[];
+      } else {
+        try {
+          final errorData = decoded is Map ? decoded : {'message': response.reasonPhrase};
+          throw Exception(errorData['message'] ?? 'API request failed');
+        } catch (e) {
+          throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
+        }
+      }
+    } catch (e) {
+      throw Exception('Failed to get subscription types: $e');
+    }
+  }
+
+  // Get current user subscription
+  Future<Map<String, dynamic>> getCurrentSubscription() async {
+    try {
+      final token = await _getToken();
+      final response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.currentSubscriptionEndpoint}'),
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(Duration(milliseconds: ApiConfig.timeout));
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Failed to get current subscription: $e');
+    }
+  }
+
+  // Create a payment
+  Future<Map<String, dynamic>> createPayment(Map<String, dynamic> payload) async {
+    try {
+      final token = await _getToken();
+      final response = await _client.post(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.createPaymentEndpoint}'),
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(payload),
+      ).timeout(Duration(milliseconds: ApiConfig.timeout));
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Failed to create payment: $e');
+    }
+  }
+
+  // Subscribe to a new plan
+  Future<Map<String, dynamic>> subscribe(Map<String, dynamic> payload) async {
+    try {
+      final token = await _getToken();
+      final response = await _client.post(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.subscribeEndpoint}'),
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(payload),
+      ).timeout(Duration(milliseconds: ApiConfig.timeout));
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Failed to subscribe: $e');
+    }
+  }
+
+  // Cancel subscription
+  Future<Map<String, dynamic>> cancelSubscription() async {
+    try {
+      final token = await _getToken();
+      final response = await _client.post(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.cancelSubscriptionEndpoint}'),
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(Duration(milliseconds: ApiConfig.timeout));
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Failed to cancel subscription: $e');
+    }
+  }
+
+  // Get transaction history
+  Future<List<Map<String, dynamic>>> getTransactionHistory(String userId) async {
+    try {
+      final token = await _getToken();
+      final response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}/payments/user-subscriptions/$userId'),
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(Duration(milliseconds: ApiConfig.timeout));
+
+      // This endpoint may return an array directly
+      final decoded = json.decode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (decoded is List) return List<Map<String, dynamic>>.from(decoded);
+        if (decoded is Map && decoded['data'] is List) {
+          return List<Map<String, dynamic>>.from(decoded['data']);
+        }
+        return <Map<String, dynamic>>[];
+      } else {
+        try {
+          final errorData = decoded is Map ? decoded : {'message': response.reasonPhrase};
+          throw Exception(errorData['message'] ?? 'API request failed');
+        } catch (e) {
+          throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
+        }
+      }
+    } catch (e) {
+      throw Exception('Failed to get transaction history: $e');
     }
   }
 

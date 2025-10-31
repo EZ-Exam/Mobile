@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import '../config/api_config.dart';
 
 class LessonQuestionsPage extends StatefulWidget {
   final String lessonId;

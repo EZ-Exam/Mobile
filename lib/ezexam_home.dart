@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'pages/login_page.dart';
 
 class EZEXAMHomePage extends StatefulWidget {
   const EZEXAMHomePage({super.key});
@@ -36,7 +35,10 @@ class _EZEXAMHomePageState extends State<EZEXAMHomePage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: SingleChildScrollView(
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: SingleChildScrollView(
         child: Column(
           children: [
             // Hero Section
@@ -145,76 +147,100 @@ class _EZEXAMHomePageState extends State<EZEXAMHomePage> {
                       ),
                       SizedBox(height: isDesktop ? 32 : 24),
                       
-                      // Action Buttons
+                      // Action Buttons (frontend-like)
                       if (!_isAuthenticated) ...[
-                        Row(
+                        Wrap(
+                          spacing: isDesktop ? 16 : 12,
+                          runSpacing: isDesktop ? 12 : 10,
+                          alignment: WrapAlignment.center,
                           children: [
-                            Expanded(
+                            SizedBox(
+                              width: isDesktop ? 220 : double.infinity,
                               child: ElevatedButton(
                                 onPressed: () => _showLoginDialog(),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   foregroundColor: const Color(0xFF3B82F6),
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: isDesktop ? 16 : 14,
-                                  ),
+                                  padding: EdgeInsets.symmetric(vertical: isDesktop ? 16 : 14),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(isDesktop ? 16 : 12),
                                   ),
                                 ),
                                 child: Text(
                                   'Đăng nhập',
-                                  style: TextStyle(
-                                    fontSize: isDesktop ? 16 : 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: TextStyle(fontSize: isDesktop ? 16 : 14, fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ),
-                            SizedBox(width: isDesktop ? 16 : 12),
-                            Expanded(
+                            SizedBox(
+                              width: isDesktop ? 220 : double.infinity,
                               child: OutlinedButton(
                                 onPressed: () => Navigator.pushNamed(context, '/signup'),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: Colors.white,
                                   side: const BorderSide(color: Colors.white, width: 2),
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: isDesktop ? 16 : 14,
-                                  ),
+                                  padding: EdgeInsets.symmetric(vertical: isDesktop ? 16 : 14),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(isDesktop ? 16 : 12),
                                   ),
                                 ),
                                 child: Text(
                                   'Đăng ký',
-                                  style: TextStyle(
-                                    fontSize: isDesktop ? 16 : 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: TextStyle(fontSize: isDesktop ? 16 : 14, fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ] else ...[
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            // Navigate to dashboard
-                            Navigator.pushNamed(context, '/dashboard');
-                          },
-                          icon: const Icon(Icons.dashboard),
-                          label: const Text('Vào Dashboard'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF3B82F6),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isDesktop ? 32 : 24,
-                              vertical: isDesktop ? 16 : 14,
+                        Column(
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () => Navigator.pushNamed(context, '/dashboard'),
+                              icon: const Icon(Icons.dashboard),
+                              label: const Text('Vào Dashboard'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: const Color(0xFF3B82F6),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isDesktop ? 32 : 24,
+                                  vertical: isDesktop ? 16 : 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(isDesktop ? 16 : 12),
+                                ),
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(isDesktop ? 16 : 12),
+                            SizedBox(height: isDesktop ? 16 : 12),
+                            Wrap(
+                              spacing: isDesktop ? 12 : 10,
+                              runSpacing: isDesktop ? 12 : 10,
+                              alignment: WrapAlignment.center,
+                              children: [
+                                _quickAction(
+                                  icon: Icons.add_card,
+                                  label: 'Nạp tiền',
+                                  color: const Color(0xFF10B981),
+                                  onTap: () => Navigator.pushNamed(context, '/deposit-funds'),
+                                  isDesktop: isDesktop,
+                                ),
+                                _quickAction(
+                                  icon: Icons.workspace_premium,
+                                  label: 'Nâng cấp gói',
+                                  color: const Color(0xFF8B5CF6),
+                                  onTap: () => Navigator.pushNamed(context, '/upgrade-subscription'),
+                                  isDesktop: isDesktop,
+                                ),
+                                _quickAction(
+                                  icon: Icons.history,
+                                  label: 'Lịch sử',
+                                  color: const Color(0xFF3B82F6),
+                                  onTap: () => Navigator.pushNamed(context, '/transaction-history'),
+                                  isDesktop: isDesktop,
+                                ),
+                              ],
                             ),
-                          ),
+                          ],
                         ),
                       ],
                     ],
@@ -277,6 +303,36 @@ class _EZEXAMHomePageState extends State<EZEXAMHomePage> {
                       ),
                     ],
                   ),
+                  SizedBox(height: isDesktop ? 24 : 16),
+                  // Call To Action Button (re-added)
+                  Align(
+                    alignment: Alignment.center,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/lessons');
+                      },
+                      icon: const Icon(Icons.play_arrow),
+                      label: Text(
+                        'Bắt đầu học ngay',
+                        style: TextStyle(
+                          fontSize: isDesktop ? 16 : 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3B82F6),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isDesktop ? 28 : 20,
+                          vertical: isDesktop ? 14 : 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(isDesktop ? 14 : 10),
+                        ),
+                        elevation: 1,
+                      ),
+                    ),
+                  ),
                   
                   SizedBox(height: isDesktop ? 32 : 24),
                   
@@ -320,7 +376,9 @@ class _EZEXAMHomePageState extends State<EZEXAMHomePage> {
                 ],
               ),
             ),
+            const SizedBox(height: 24),
           ],
+        ),
         ),
       ),
     );
@@ -414,5 +472,41 @@ class _EZEXAMHomePageState extends State<EZEXAMHomePage> {
 
   void _showLoginDialog() {
     Navigator.pushNamed(context, '/login');
+  }
+
+  Widget _quickAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+    required bool isDesktop,
+  }) {
+    return SizedBox(
+      width: isDesktop ? 200 : 160,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, color: color, size: isDesktop ? 20 : 18),
+        label: Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: isDesktop ? 14 : 12,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: color.withOpacity(0.6), width: 1.5),
+          padding: EdgeInsets.symmetric(
+            horizontal: isDesktop ? 16 : 12,
+            vertical: isDesktop ? 12 : 10,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(isDesktop ? 14 : 10),
+          ),
+          backgroundColor: Colors.white.withOpacity(0.1),
+          foregroundColor: color,
+        ),
+      ),
+    );
   }
 }

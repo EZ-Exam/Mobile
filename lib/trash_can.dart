@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'l10n/app_localizations.dart';
 
 class TrashCan extends StatelessWidget {
-  const TrashCan({Key? key}) : super(key: key);
+  const TrashCan({super.key});
 
   // Danh sách file đã xóa (hiện đang để rỗng để hiển thị trạng thái empty)
   final List<Map<String, dynamic>> trashFiles = const [
@@ -20,7 +20,7 @@ class TrashCan extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
 
     if (trashFiles.isEmpty) {
       return Center(
@@ -97,13 +97,13 @@ class TrashFileCard extends StatelessWidget {
   final VoidCallback onMenuTap;
 
   const TrashFileCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.iconPath,
     required this.previewUrl,
     required this.onTap,
     required this.onMenuTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

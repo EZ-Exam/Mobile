@@ -724,7 +724,7 @@ class _QuestionPracticePageState extends State<QuestionPracticePage> {
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );

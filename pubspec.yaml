@@ -35,6 +35,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: 0.20.2
+  # Open URLs (PDF links)
+  url_launcher: ^6.1.10
 
 dev_dependencies:
   flutter_test:

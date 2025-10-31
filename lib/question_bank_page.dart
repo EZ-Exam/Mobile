@@ -14,8 +14,8 @@ class _QuestionBankPageState extends State<QuestionBankPage> {
   List<Map<String, dynamic>> _questions = [];
   String _searchQuery = '';
   String _selectedDifficulty = 'all';
-  String _sortBy = 'createdAt';
-  String _sortOrder = 'desc';
+  final String _sortBy = 'createdAt';
+  final String _sortOrder = 'desc';
   int _currentPage = 1;
   bool _hasMoreData = true;
   String? _error;

@@ -39,7 +39,7 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
     }
 
     // Mobile version
-    return Container(
+    return SizedBox(
       width: double.infinity,
       height: 50,
       child: ElevatedButton.icon(

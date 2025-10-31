@@ -21,7 +21,7 @@ class _WebGoogleSignInButtonState extends State<WebGoogleSignInButton> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       height: 50,
       child: ElevatedButton.icon(

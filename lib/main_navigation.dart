@@ -1,11 +1,14 @@
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'ezexam_home.dart';
 import 'dashboard.dart';
 import 'lessons_page.dart';
 import 'mock_tests_page.dart';
 import 'question_bank_page.dart';
 import 'profile_page.dart';
-import 'settings_page.dart';
+import 'providers/user_provider.dart';
+import 'widgets/support_chat.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -16,7 +19,6 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
-  bool _isAuthenticated = false;
 
   final List<Widget> _pages = [
     const EZEXAMHomePage(),
@@ -27,34 +29,55 @@ class _MainNavigationState extends State<MainNavigation> {
     const ProfilePage(),
   ];
 
-  final List<String> _titles = [
-    'EZEXAM',
-    'Dashboard',
-    'Lessons',
-    'Mock Tests',
-    'Question Bank',
-    'Profile',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Fetch user data when the widget is initialized
+    Provider.of<UserProvider>(context, listen: false).fetchUser();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
+    final user = userProvider.user;
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+    const navBarHeight = 64.0;
+
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: Stack(
+          children: [
+            Padding(
+              padding: EdgeInsets.only(bottom: navBarHeight + bottomInset),
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: _pages,
+              ),
+            ),
+            Positioned(
+              right: 16,
+              bottom: navBarHeight + bottomInset + 16,
+              child: SupportChat(user: user),
             ),
           ],
         ),
-        child: SafeArea(
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        bottom: true,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
@@ -84,7 +107,7 @@ class _MainNavigationState extends State<MainNavigation> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF3B82F6).withOpacity(0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
@@ -95,14 +118,14 @@ class _MainNavigationState extends State<MainNavigation> {
             Icon(
               icon,
               color: isSelected ? const Color(0xFF3B82F6) : Colors.grey[600],
-              size: 24,
+              size: 22,
             ),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? const Color(0xFF3B82F6) : Colors.grey[600],
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -112,3 +135,4 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 }
+

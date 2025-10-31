@@ -19,7 +19,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
 
     // Danh sách màn hình
     final List<Widget> screens = [
@@ -47,7 +47,7 @@ class _MainScreenState extends State<MainScreen> {
       t.trash_can,
     ];
 
-    void _onItemTapped(int index) {
+    void onItemTapped(int index) {
       if (index >= 0 && index < screens.length) {
         setState(() {
           _selectedIndex = index;
@@ -55,7 +55,7 @@ class _MainScreenState extends State<MainScreen> {
       }
     }
 
-    Widget _buildPlaceholder(
+    Widget buildPlaceholder(
         String title, IconData icon, String description, Widget child) {
       return Card(
         margin: const EdgeInsets.all(16),
@@ -67,8 +67,8 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               CircleAvatar(
                 backgroundColor: Colors.blue[100],
-                child: Icon(icon, size: 30, color: Colors.blue),
                 radius: 30,
+                child: Icon(icon, size: 30, color: Colors.blue),
               ),
               const SizedBox(height: 12),
               Text(title,
@@ -91,7 +91,7 @@ class _MainScreenState extends State<MainScreen> {
         index: _selectedIndex,
         children: screens.map((screen) {
           if (screen is MyExam) {
-            return _buildPlaceholder(
+            return buildPlaceholder(
               t.my_exam_title,
               Icons.book,
               t.my_exam_description,
@@ -99,7 +99,7 @@ class _MainScreenState extends State<MainScreen> {
             );
           }
           if (screen is Recently) {
-            return _buildPlaceholder(
+            return buildPlaceholder(
               t.recently,
               Icons.history,
               t.recently_description,
@@ -107,7 +107,7 @@ class _MainScreenState extends State<MainScreen> {
             );
           }
           if (screen is TrashCan) {
-            return _buildPlaceholder(
+            return buildPlaceholder(
               t.trash_can,
               Icons.delete,
               t.trash_can_description,
@@ -115,7 +115,7 @@ class _MainScreenState extends State<MainScreen> {
             );
           }
           if (screen is HomeBox) {
-            return _buildPlaceholder(
+            return buildPlaceholder(
               t.home,
               Icons.home,
               "Welcome to EZEXAM!",
@@ -127,7 +127,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
+        onTap: onItemTapped,
         items: [
           BottomNavigationBarItem(icon: const Icon(Icons.home), label: t.home),
           BottomNavigationBarItem(icon: const Icon(Icons.add), label: t.create_new),

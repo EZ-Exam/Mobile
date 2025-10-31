@@ -16,7 +16,7 @@ class _LessonsPageState extends State<LessonsPage> {
   String _searchQuery = '';
   String _selectedSubject = 'all';
   String _sortBy = 'title';
-  String _sortOrder = 'asc';
+  final String _sortOrder = 'asc';
   int _currentPage = 1;
   bool _hasMoreData = true;
   final ApiService _apiService = ApiService();

@@ -725,7 +725,7 @@ class _QuestionDetailPageState extends State<QuestionDetailPage> with TickerProv
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
